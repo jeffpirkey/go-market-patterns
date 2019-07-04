@@ -13,11 +13,7 @@ Requirements:
 
 */
 
-var Patterns = model.NewTickers() // Maps ticker symbol to a map of Result patterns and Pattern
-
-var (
-	Periods = make(map[string]model.PeriodTimeSlice) // Maps ticker symbol to a time slice of Periods
-)
+var Tickers = model.NewTickers() // Maps ticker symbol to a map of Result patterns and Pattern
 
 func main() {
 

@@ -11,14 +11,20 @@ import (
 )
 
 func TestSummaryFile(t *testing.T) {
-	//assert := assert.New(t)
+	assert := assert.New(t)
 
 	csvFile, _ := os.Open("data/ibm.us.txt")
 	reader := csv.NewReader(bufio.NewReader(csvFile))
 
 	load("ibm", reader)
-
-	train("ibm")
+	err := train("ibm")
+	if err != nil {
+		assert.Fail("test error", err)
+	}
+	err = trainSeries("ibm", "3-period-series", "3 period series", 3)
+	if err != nil {
+		assert.Fail("test error", err)
+	}
 
 	summary("ibm")
 }
@@ -30,9 +36,14 @@ func TestFind50File(t *testing.T) {
 	reader := csv.NewReader(bufio.NewReader(csvFile))
 
 	load("ibm", reader)
-
-	train("ibm")
-
+	err := train("ibm")
+	if err != nil {
+		assert.Fail("test error", err)
+	}
+	err = trainSeries("ibm", "3-period-series", "3 period series", 3)
+	if err != nil {
+		assert.Fail("test error", err)
+	}
 	found := find50("ibm")
 
 	assert.NotEmpty(found)
@@ -41,30 +52,18 @@ func TestFind50File(t *testing.T) {
 func TestFindLast(t *testing.T) {
 	assert := assert.New(t)
 
-	in := strings.Join([]string{
-		`date,value`,
-		`2019-01-01, 2`,
-		`2019-01-02, 3`,
-		`2019-01-03, 4`,
-		`2019-01-04, 5`,
-		`2019-01-05, 2`,
-		`2019-01-06, 3`,
-		`2019-01-07, 4`,
-		`2019-01-08, 5`,
-		`2019-01-09, 6`,
-		`2019-01-10, 2`,
-		`2019-01-11, 3`,
-		`2019-01-13, 4`,
-		`2019-01-14, 5`,
-		`2019-01-15, 5`,
-	}, "\n")
-
 	r := csv.NewReader(strings.NewReader(in))
 	r.TrimLeadingSpace = true
 
 	load("test", r)
-
-	train("test")
+	err := train("test")
+	if err != nil {
+		assert.Fail("test error", err)
+	}
+	err = trainSeries("test", "3-period-series", "3 period series", 3)
+	if err != nil {
+		assert.Fail("test error", err)
+	}
 
 	last, err := findLastPeriod("test")
 

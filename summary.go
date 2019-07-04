@@ -6,9 +6,10 @@ import (
 )
 
 func summary(tsym string) {
-	ticker := Patterns.Find(tsym)
 
-	for k, v := range ticker.FindAll() {
+	ticker := Tickers.Find(tsym)
+
+	for k, v := range ticker.FindAllPatterns() {
 
 		fmt.Println(k)
 		for k2, v2 := range v.FindAll() {
@@ -22,9 +23,9 @@ func summary(tsym string) {
 func find50(tsym string) []*model.Period {
 
 	var found = make([]*model.Period, 1)
-	tickerPatterns := Patterns.Find(tsym)
+	ticker := Tickers.Find(tsym)
 
-	for k, v := range tickerPatterns.FindAll() {
+	for k, v := range ticker.FindAllPatterns() {
 
 		for k2, v2 := range v.FindAll() {
 			c := float64(v2) / float64(v.TotalCount()) * 100
@@ -37,12 +38,10 @@ func find50(tsym string) []*model.Period {
 	return found
 }
 
-func findLastPeriod(tsym string) (model.Period, error) {
+func findLastPeriod(tsym string) (*model.Period, error) {
 
-	tmp := Periods[tsym]
-	if tmp == nil {
-		return model.Period{}, fmt.Errorf("unable to find ticker data for %v", tsym)
-	}
+	ticker := Tickers.Find(tsym)
+	slice := ticker.PeriodSlice()
 
-	return tmp.Last(), nil
+	return slice.Last(), nil
 }

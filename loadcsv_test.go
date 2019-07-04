@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
@@ -15,9 +14,9 @@ func TestLoad(t *testing.T) {
 	assert := assert.New(t)
 
 	in := strings.Join([]string{
-		`date,value`,
-		`2019-01-01, 2`,
-		`2019-01-02, 3`,
+		`Date,Open,High,Low,Close,Volume`,
+		`2019-01-01, 2, 3, 1, 2, 100`,
+		`2019-01-02, 3, 4, 1, 4, 101`,
 	}, "\n")
 
 	r := csv.NewReader(strings.NewReader(in))
@@ -25,9 +24,10 @@ func TestLoad(t *testing.T) {
 
 	load("test", r)
 
-	assert.NotEmpty(Periods, "Periods is not empty after load")
-	assert.Equal(1, len(Periods), "Expected Periods have 1 entry")
-	assert.Equal(2, len(Periods["test"]), "Expected Periods for 'test' have 2 entry")
+	ticker := Tickers.Find("test")
+	periods := ticker.FindAllPeriods()
+	assert.NotEmpty(periods, "Periods is not empty after load")
+	assert.Equal(2, len(periods), "Expected Periods have 1 entry")
 }
 
 func TestLoadSortUnordered(t *testing.T) {
@@ -44,9 +44,9 @@ func TestLoadSortUnordered(t *testing.T) {
 	}
 
 	in := strings.Join([]string{
-		`date,value`,
-		`2019-01-02, 2`,
-		`2019-01-01, 3`,
+		`Date,Open,High,Low,Close,Volume`,
+		`2019-01-02, 2, 3, 1, 2, 100`,
+		`2019-01-01, 3, 4, 1, 4, 101`,
 	}, "\n")
 
 	r := csv.NewReader(strings.NewReader(in))
@@ -54,8 +54,10 @@ func TestLoadSortUnordered(t *testing.T) {
 
 	load("test", r)
 
-	first := Periods["test"][0]
-	second := Periods["test"][1]
+	ticker := Tickers.Find("test")
+	slice := ticker.PeriodSlice()
+	first := slice[0]
+	second := slice[1]
 
 	assert.Equal(date1, first.Date, "Expected first data to be the first")
 	assert.Equal(date2, second.Date, "Expected second data to be the last")
@@ -75,9 +77,9 @@ func TestLoadSortOrdered(t *testing.T) {
 	}
 
 	in := strings.Join([]string{
-		`date,value`,
-		`2019-01-01, 2`,
-		`2019-01-02, 3`,
+		`Date,Open,High,Low,Close,Volume`,
+		`2019-01-01, 2, 3, 1, 2, 100`,
+		`2019-01-02, 3, 4, 1, 4, 101`,
 	}, "\n")
 
 	r := csv.NewReader(strings.NewReader(in))
@@ -85,21 +87,24 @@ func TestLoadSortOrdered(t *testing.T) {
 
 	load("test", r)
 
-	first := Periods["test"][0]
-	second := Periods["test"][1]
+	ticker := Tickers.Find("test")
+	slice := ticker.PeriodSlice()
+	first := slice[0]
+	second := slice[1]
 
 	assert.Equal(date1, first.Date, "Expected first data to be the first")
 	assert.Equal(date2, second.Date, "Expected second data to be the last")
 }
 
 func TestLoadFile(t *testing.T) {
-	//assert := assert.New(t)
+	assert := assert.New(t)
 
 	csvFile, _ := os.Open("data/zf.us.txt")
 	reader := csv.NewReader(bufio.NewReader(csvFile))
 
 	load("zf", reader)
 
-	fmt.Println(len(Periods["zf"]))
+	ticker := Tickers.Find("zf")
 
+	assert.NotEmpty(ticker.FindAllPeriods(), "Expected Periods to be populated")
 }

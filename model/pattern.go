@@ -1,86 +1,63 @@
 package model
 
-type Result string
+type Result int
 
 const (
-	Up       Result = "U"
-	NoChange Result = "N"
-	Down     Result = "D"
+	Up Result = iota
+	NoChange
+	Down
+	NotDefined
 )
 
-type pattern struct {
+// For a given sequence of Result types, a pattern records the number of times that the next sequence is Up, Down, or
+// NoChange.
+type Pattern struct {
 	results map[Result]int
 }
 
-type ticker struct {
-	patterns map[string]pattern
-}
+// *********************************************************
+//   Pattern methods
+// *********************************************************
 
-type Tickers struct {
-	tickers map[string]ticker
-}
-
-func NewTickers() Tickers {
-	return Tickers{make(map[string]ticker)}
-}
-
-func (t *Tickers) Find(tsym string) ticker {
-
-	x, ok := t.tickers[tsym]
-	if ok {
-		return x
+func (p *Pattern) FindAll() map[Result]int {
+	if p.results == nil {
+		p.results = make(map[Result]int)
 	}
-	t.tickers[tsym] = ticker{make(map[string]pattern)}
-
-	return t.tickers[tsym]
-}
-
-func (t *ticker) FindAll() map[string]pattern {
-	return t.patterns
-}
-
-func (t *ticker) Find(name string) pattern {
-	x, ok := t.patterns[name]
-	if ok {
-		return x
-	}
-
-	t.patterns[name] = pattern{make(map[Result]int)}
-
-	return t.patterns[name]
-}
-
-func (p *pattern) FindAll() map[Result]int {
 	return p.results
 }
 
-func (p *pattern) Find(r Result) int {
+func (p *Pattern) Find(r Result) int {
+	if p.results == nil {
+		p.results = make(map[Result]int)
+	}
 	return p.results[r]
 }
 
-func (p *pattern) TotalCount() int {
+func (p *Pattern) TotalCount() int {
 	sum := 0
-
 	for _, v := range p.results {
 		sum += v
 	}
-
 	return sum
 }
 
-func (p *pattern) Inc(result Result) {
-
+func (p *Pattern) Inc(result Result) {
+	if p.results == nil {
+		p.results = make(map[Result]int)
+	}
 	p.results[result]++
 }
 
-// This function calculates the PeriodResult using p2 as the current timeSlice compared to the previous date in p1
-func Calc(prev, cur float64) Result {
+func (r Result) String() string {
+	return [...]string{"U", "N", "D", "x"}[r]
+}
 
+// This function calculates a Result using 'prev' as the previous value compared to the current date in 'cur'
+func Calc(prev, cur float64) Result {
 	if prev < cur {
 		return Up
 	} else if prev > cur {
 		return Down
 	}
-
 	return NoChange
 }
