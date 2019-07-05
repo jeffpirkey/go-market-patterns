@@ -17,4 +17,12 @@ var Tickers = model.NewTickers() // Maps ticker symbol to a map of Result patter
 
 func main() {
 
+	// First load the data
+	loadDir("data/")
+
+	// Start the profiler
+	go startProfile()
+
+	// Start the main api server
+	start()
 }

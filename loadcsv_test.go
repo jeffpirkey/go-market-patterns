@@ -98,13 +98,18 @@ func TestLoadSortOrdered(t *testing.T) {
 
 func TestLoadFile(t *testing.T) {
 	assert := assert.New(t)
-
 	csvFile, _ := os.Open("data/zf.us.txt")
 	reader := csv.NewReader(bufio.NewReader(csvFile))
-
 	load("zf", reader)
-
 	ticker := Tickers.Find("zf")
-
 	assert.NotEmpty(ticker.FindAllPeriods(), "Expected Periods to be populated")
+}
+
+func TestLoadDir(t *testing.T) {
+	assert := assert.New(t)
+
+	loadDir("data/")
+
+	assert.NotEmpty(Tickers, "Expected tickers to not be empty")
+	assert.Equal(3, len(Tickers.FindAll()), "Expected 3 tickers")
 }

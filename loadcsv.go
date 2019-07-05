@@ -1,16 +1,44 @@
 package main
 
 import (
+	"bufio"
 	"encoding/csv"
+	"fmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"io/ioutil"
 	"market-patterns/model"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 const (
 	timeFormat = "2006-01-02"
 )
+
+func loadDir(path string) error {
+
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return errors.Wrap(err, "unable to load dir")
+	}
+
+	for _, file := range files {
+
+		names := strings.Split(file.Name(), ".")
+		if len(names) < 1 {
+			return fmt.Errorf("invalid file name %v", file.Name())
+		}
+
+		csvFile, _ := os.Open(path + file.Name())
+		reader := csv.NewReader(bufio.NewReader(csvFile))
+		load(names[0], reader)
+	}
+
+	return nil
+}
 
 func load(tsym string, r *csv.Reader) {
 

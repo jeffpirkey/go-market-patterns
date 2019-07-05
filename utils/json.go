@@ -17,3 +17,11 @@ func ToJsonString(a interface{}) *string {
 
 	return &str
 }
+
+func ToJsonBytes(a interface{}) []byte {
+	data, err := json.Marshal(a)
+	if err != nil {
+		log.Infof("error marshalling data to json string due to %v", err)
+	}
+	return data
+}

@@ -29,6 +29,21 @@ func NewTickers() Tickers {
 //   Tickers methods
 // *********************************************************
 
+func (t *Tickers) FindNames() []string {
+
+	var names []string
+	for name, _ := range t.tickers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	return names
+}
+
+func (t *Tickers) FindAll() map[string]*Ticker {
+	return t.tickers
+}
+
 func (t *Tickers) Find(tickerSym string) *Ticker {
 	x, found := t.tickers[tickerSym]
 	if !found {
