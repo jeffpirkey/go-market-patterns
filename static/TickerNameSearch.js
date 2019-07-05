@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, {Component} from 'react';
 import ReactDOM from 'react-dom';
 import {Route, withRouter} from 'react-router-dom';
 import TickerName from './Merk';
@@ -7,35 +7,37 @@ class TickerNameSearch extends Component {
     constructor() {
         super();
         this.state = {
-            names: [],
+            tickers: [],
         };
     }
 }
 
-componentDidMount() {
-    let initialNames = [];
+componentDidMount()
+{
+    let initialTickers = [];
     fetch('localhost:7666/api/ticker-names/')
         .then(response => {
             return response.json();
         }).then(data => {
-        initialNames = data.results.map((name) => {
-            return name
+        initialTickers = data.results.map((ticker) => {
+            return ticker
         });
-        console.log(initialNames);
+        console.log(initialTickers);
         this.setState({
-            names: initialNames,
+            names: initialTickers,
         });
     });
 }
 
-render() {
+render()
+{
     return (
-        <TickerName state={this.state}/>
-);
+        "<TickerName state={this.state}/>"
+    );
 }
 
 // after component is finished
 
-export default PlanetSearch;
+export default TickerNameSearch;
 
-ReactDOM.render(<PlanetSearch />, document.getElementById('react-search'));
+ReactDOM.render("<TickerNameSearch />", document.getElementById('react-search'));
