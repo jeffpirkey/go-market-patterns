@@ -1,11 +1,10 @@
 import React, {Component} from 'react';
 import ReactDOM from 'react-dom';
-import {Route, withRouter} from 'react-router-dom';
-import TickerName from './Merk';
+import TickerName from './TickerName';
 
 class TickerNameSearch extends Component {
-    constructor() {
-        super();
+    constructor(props) {
+        super(props);
         this.state = {
             tickers: [],
         };
@@ -32,7 +31,7 @@ componentDidMount()
 render()
 {
     return (
-        "<TickerName state={this.state}/>"
+        <TickerName state={this.state}/>
     );
 }
 
@@ -40,4 +39,4 @@ render()
 
 export default TickerNameSearch;
 
-ReactDOM.render("<TickerNameSearch />", document.getElementById('react-search'));
+ReactDOM.render(<TickerNameSearch/>, document.getElementById('react-search'));

@@ -23,7 +23,7 @@ func start() {
 func handlePredict(w http.ResponseWriter, r *http.Request) {
 	tickerNames := report.TickerNames{Names: Tickers.FindNames()}
 	jsonData := utils.ToJsonBytes(tickerNames)
-	w.WriteHeader(http.StatusOK)
+	r.Header.Set("Content-Type", "application/json")
 	_, err := w.Write(jsonData)
 
 	if err != nil {
