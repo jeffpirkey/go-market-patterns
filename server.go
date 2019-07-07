@@ -1,38 +1,41 @@
 package main
 
 import (
+	"github.com/gin-gonic/contrib/static"
+	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	"market-patterns/report"
-	"market-patterns/utils"
 	"net/http"
 	_ "net/http/pprof"
 )
 
 func start() {
-	fs := http.FileServer(http.Dir("static"))
-	h := http.NewServeMux()
-	h.HandleFunc("/api/predict", handlePredict)
-	h.HandleFunc("/api/ticker-names", handlePredict)
-	h.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fs.ServeHTTP(w, r)
-	})
+
+	router := gin.Default()
+	router.Use(static.Serve("/", static.LocalFile("./ui/build", true)))
+
+	apiLatest := router.Group("/api/latest")
+	apiLatest.GET("/predict", handlePredict)
+	apiLatest.GET("/ticker-names", handleTickerNames)
+
 	log.Info("market-pattern server listening...")
-	log.Fatal(http.ListenAndServe(":7666", h))
+
+	log.Fatal(router.Run(":7666"))
 }
 
-func handlePredict(w http.ResponseWriter, r *http.Request) {
-	tickerNames := report.TickerNames{Names: Tickers.FindNames()}
-	jsonData := utils.ToJsonBytes(tickerNames)
-	r.Header.Set("Content-Type", "application/json")
-	_, err := w.Write(jsonData)
+func handlePredict(ctx *gin.Context) {
 
+	tsym := "ibm"
+	prediction, err := predict(tsym)
 	if err != nil {
-		log.Errorf("unable to write response due to %v", err)
+		ctx.AbortWithError(http.StatusBadRequest, err)
 	}
+	ctx.JSON(http.StatusOK, prediction)
 }
 
-func handleTickerNames(w http.ResponseWriter, r *http.Request) {
-
+func handleTickerNames(ctx *gin.Context) {
+	tickerNames := report.TickerNames{Names: Tickers.FindNames()}
+	ctx.JSON(http.StatusOK, tickerNames)
 }
 
 func startProfile() {
