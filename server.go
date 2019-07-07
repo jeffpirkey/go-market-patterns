@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"market-patterns/report"
 	"net/http"
@@ -15,7 +16,7 @@ func start() {
 	router.Use(static.Serve("/", static.LocalFile("./ui/build", true)))
 
 	apiLatest := router.Group("/api/latest")
-	apiLatest.GET("/predict", handlePredict)
+	apiLatest.GET("/predict/:id", handlePredict)
 	apiLatest.GET("/ticker-names", handleTickerNames)
 
 	log.Info("market-pattern server listening...")
@@ -25,8 +26,13 @@ func start() {
 
 func handlePredict(ctx *gin.Context) {
 
-	tsym := "ibm"
-	prediction, err := predict(tsym)
+	ticker := ctx.Param("id")
+
+	if ticker == "undefined" {
+		ctx.AbortWithError(http.StatusBadRequest, errors.New("no path parameter defined"))
+	}
+
+	prediction, err := predict(ticker)
 	if err != nil {
 		ctx.AbortWithError(http.StatusBadRequest, err)
 	}
