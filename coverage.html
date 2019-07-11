@@ -1,0 +1,607 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">market-patterns/loadcsv.go (96.3%)</option>
+				
+				<option value="file1">market-patterns/main.go (0.0%)</option>
+				
+				<option value="file2">market-patterns/predict.go (95.2%)</option>
+				
+				<option value="file3">market-patterns/server.go (0.0%)</option>
+				
+				<option value="file4">market-patterns/summary.go (100.0%)</option>
+				
+				<option value="file5">market-patterns/train.go (93.8%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "archive/zip"
+        "bufio"
+        "encoding/csv"
+        "github.com/hashicorp/go-multierror"
+        "github.com/pkg/errors"
+        log "github.com/sirupsen/logrus"
+        "io/ioutil"
+        "market-patterns/model"
+        "os"
+        "strconv"
+        "strings"
+        "time"
+)
+
+const (
+        timeFormat = "2006-01-02"
+)
+
+func loadDir(path string) error <span class="cov8" title="1">{
+
+        files, err := ioutil.ReadDir(path)
+        if err != nil </span><span class="cov8" title="1">{
+                return errors.Wrap(err, "unable to load dir")
+        }</span>
+
+        <span class="cov8" title="1">var results error
+
+        for _, file := range files </span><span class="cov8" title="1">{
+                split := strings.Split(file.Name(), ".")
+
+                ext := split[len(split)-1]
+                if ext != "txt" &amp;&amp; ext != "csv" </span><span class="cov8" title="1">{
+                        log.Warnf("Skipping unrecognized file extension of %v", ext)
+                        continue</span>
+                }
+                // Skip this error and let the load return if the reader is invalid
+                <span class="cov8" title="1">csvFile, _ := os.Open(path + file.Name())
+                reader := csv.NewReader(bufio.NewReader(csvFile))
+                err := load(split[0], reader)
+                if err != nil </span><span class="cov8" title="1">{
+                        results = multierror.Append(results, err)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return results</span>
+}
+
+func loadZip(zipFile string) error <span class="cov8" title="1">{
+
+        // Open a zip archive for reading.
+        r, err := zip.OpenReader(zipFile)
+        if err != nil </span><span class="cov8" title="1">{
+                return errors.Wrap(err, "problem open zip archive")
+        }</span>
+
+        <span class="cov8" title="1">var results error
+
+        defer func(r *zip.ReadCloser) </span><span class="cov8" title="1">{
+                err := r.Close()
+                if err != nil </span><span class="cov0" title="0">{
+                        results = multierror.Append(results, errors.Wrap(err, "problem closing zip reader"))
+                }</span>
+        }(r)
+
+        // Iterate through the files in the archive,
+        // printing some of their contents.
+        <span class="cov8" title="1">for _, f := range r.File </span><span class="cov8" title="1">{
+                names := strings.Split(f.Name, ".")
+                rc, err := f.Open()
+                if err != nil </span><span class="cov0" title="0">{
+                        return errors.Wrap(err, "problem open zip file")
+                }</span>
+
+                <span class="cov8" title="1">reader := csv.NewReader(rc)
+                err = load(names[0], reader)
+                if err != nil </span><span class="cov8" title="1">{
+                        results = multierror.Append(results, err)
+                }</span>
+                <span class="cov8" title="1">err = rc.Close()
+                if err != nil </span><span class="cov0" title="0">{
+                        results = multierror.Append(results, errors.Wrap(err, "problem closing zip file reader"))
+                }</span>
+        }
+
+        <span class="cov8" title="1">return results</span>
+}
+
+func load(symbol string, r *csv.Reader) error <span class="cov8" title="1">{
+
+        var results error
+
+        vals, err := r.ReadAll()
+        if err != nil </span><span class="cov8" title="1">{
+                return errors.Wrap(err, "error reading csv")
+        }</span>
+
+        <span class="cov8" title="1">if vals == nil </span><span class="cov8" title="1">{
+                return errors.New("Empty or invalid CSV")
+        }</span>
+
+        <span class="cov8" title="1">ticker := model.Ticker{Symbol: symbol, Series: make(map[string]*model.Series),
+                Patterns: make(map[string]*model.Pattern),
+                Periods:  make(map[string]*model.Period)}
+        for i, v := range vals </span><span class="cov8" title="1">{
+
+                if i == 0 </span><span class="cov8" title="1">{
+                        // skip header line
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">date, err := convertTime(v[0])
+                if err != nil </span><span class="cov8" title="1">{
+                        results = multierror.Append(results, errors.Wrap(err, "date field"))
+                }</span>
+                <span class="cov8" title="1">open, err := convertFloat(v[1])
+                if err != nil </span><span class="cov8" title="1">{
+                        results = multierror.Append(results, errors.Wrap(err, "open field"))
+                }</span>
+                <span class="cov8" title="1">high, err := convertFloat(v[2])
+                if err != nil </span><span class="cov8" title="1">{
+                        results = multierror.Append(results, errors.Wrap(err, "high field"))
+                }</span>
+                <span class="cov8" title="1">low, err := convertFloat(v[3])
+                if err != nil </span><span class="cov8" title="1">{
+                        results = multierror.Append(results, errors.Wrap(err, "low field"))
+                }</span>
+                <span class="cov8" title="1">cl, err := convertFloat(v[4])
+                if err != nil </span><span class="cov8" title="1">{
+                        results = multierror.Append(results, errors.Wrap(err, "close field"))
+                }</span>
+                <span class="cov8" title="1">volume, err := convertInt(v[5])
+                if err != nil </span><span class="cov8" title="1">{
+                        results = multierror.Append(results, errors.Wrap(err, "volume field"))
+                }</span>
+
+                <span class="cov8" title="1">p := model.Period{Date: date, Open: open, High: high, Low: low, Close: cl, Volume: volume}
+                ticker.AddPeriod(&amp;p)</span>
+        }
+
+        // Save to mongo
+        <span class="cov8" title="1">Repos.TickerRepo.FindOneAndReplace(&amp;ticker)
+
+        return results</span>
+}
+
+func convertFloat(v string) (float64, error) <span class="cov8" title="1">{
+        f, err := strconv.ParseFloat(v, 64)
+        if err != nil </span><span class="cov8" title="1">{
+                return f, errors.Wrap(err, "unable to convert csv value to float")
+        }</span>
+        <span class="cov8" title="1">return f, nil</span>
+}
+
+func convertInt(v string) (int, error) <span class="cov8" title="1">{
+        i, err := strconv.Atoi(v)
+        if err != nil </span><span class="cov8" title="1">{
+                return i, errors.Wrap(err, "unable to convert csv value to int")
+        }</span>
+        <span class="cov8" title="1">return i, nil</span>
+}
+
+func convertTime(v string) (time.Time, error) <span class="cov8" title="1">{
+        t, err := time.Parse(timeFormat, v)
+        if err != nil </span><span class="cov8" title="1">{
+                return t, errors.Wrap(err, "unable to convert csv value to time")
+        }</span>
+        <span class="cov8" title="1">return t, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package main
+
+import (
+        "github.com/namsral/flag"
+        log "github.com/sirupsen/logrus"
+        "market-patterns/config"
+        "market-patterns/mal"
+)
+
+/*
+Requirements:
+1) Lookup periods by ticker symbol
+2) Sort periods by date
+3) Build patterns for a ticker symbol using Up, NoChange, and Down
+4) Count the number of Up, NoChange, and Down results for a pattern over time for a ticker symbol
+5) Find a pattern for a ticker symbol
+6) Find the most current period by date
+
+*/
+
+var Repos *mal.Repos
+
+func main() <span class="cov0" title="0">{
+
+        config := config.Init("app-config.yaml")
+        Repos = mal.New(config)
+
+
+        var load bool
+        flag.BoolVar(&amp;load, "load", false, "load and train")
+        flag.Parse()
+
+        if load </span><span class="cov0" title="0">{
+                err := loadZip("data/stocks.zip")
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Fatal(err)
+                }</span>
+
+                <span class="cov0" title="0">trainAll();
+                trainAllSeries("3-period-series", "3 period series", 3)
+
+                log.Info("Completed laod and train.")
+
+                return</span>
+        }
+
+        // Start the profiler
+        <span class="cov0" title="0">go startProfile()
+
+        // Start the main api server
+        start()</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package main
+
+import (
+        "fmt"
+        log "github.com/sirupsen/logrus"
+        "market-patterns/model"
+        "market-patterns/report"
+        "strings"
+)
+
+func predict(symbol string) (report.Prediction, error) <span class="cov8" title="1">{
+
+        ticker := Repos.TickerRepo.FindOne(symbol)
+        slice := ticker.PeriodSlice()
+
+        fromDay := slice.Last().Date
+        nextDay := fromDay.AddDate(0, 0, 1)
+        prediction := report.Prediction{TickerSymbol: symbol,
+                NextDate: fmt.Sprintf("%d-%02d-%02d", nextDay.Year(), nextDay.Month(), nextDay.Day()),
+                FromDate: fmt.Sprintf("%d-%02d-%02d", fromDay.Year(), fromDay.Month(), fromDay.Day())}
+
+        for seriesName, series := range ticker.FindAllSeries() </span><span class="cov8" title="1">{
+
+                log.Infof("Processing prediction for %v the series of %v...", symbol, seriesName)
+
+                lastPeriods := slice.LastByRange(series.SeriesLength)
+                var match string
+                for _, period := range lastPeriods </span><span class="cov8" title="1">{
+                        // Find the result for the series name being
+                        // predicted for each period
+                        match += period.SequenceResult
+                }</span>
+
+                <span class="cov8" title="1">ps := report.PredictionSeries{Name: seriesName, Pattern: match, Probabilities: make(map[string]float64)}
+                prediction.Series = append(prediction.Series, ps)
+
+                if strings.Contains(match, model.NotDefined) </span><span class="cov0" title="0">{
+                        log.Info("No supporting data")
+                }</span> else<span class="cov8" title="1"> {
+                        pattern := ticker.FindPattern(match)
+                        for result, count := range pattern.FindAll() </span><span class="cov8" title="1">{
+                                pb := float64(count) / float64(pattern.TotalCount())
+                                ps.Probabilities[result] = pb
+                        }</span>
+                }
+
+                <span class="cov8" title="1">log.Infof("Finished processing prediction for ticker %v and series %v", symbol, seriesName)</span>
+        }
+
+        <span class="cov8" title="1">return prediction, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package main
+
+import (
+        "github.com/gin-gonic/contrib/static"
+        "github.com/gin-gonic/gin"
+        "github.com/pkg/errors"
+        log "github.com/sirupsen/logrus"
+        "market-patterns/report"
+        "net/http"
+        _ "net/http/pprof"
+)
+
+func start() <span class="cov0" title="0">{
+
+        router := gin.Default()
+        router.Use(static.Serve("/", static.LocalFile("./ui/build", true)))
+
+        apiLatest := router.Group("/api/latest")
+        apiLatest.GET("/predict/:id", handlePredict)
+        apiLatest.GET("/ticker-names", handleTickerNames)
+
+        log.Info("market-pattern server listening...")
+
+        log.Fatal(router.Run(":7666"))
+}</span>
+
+func handlePredict(ctx *gin.Context) <span class="cov0" title="0">{
+
+        ticker := ctx.Param("id")
+
+        if ticker == "undefined" </span><span class="cov0" title="0">{
+                _ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no path parameter defined"))
+        }</span>
+
+        <span class="cov0" title="0">prediction, err := predict(ticker)
+        if err != nil </span><span class="cov0" title="0">{
+                _ = ctx.AbortWithError(http.StatusBadRequest, err)
+        }</span>
+        <span class="cov0" title="0">ctx.JSON(http.StatusOK, prediction)</span>
+}
+
+func handleTickerNames(ctx *gin.Context) <span class="cov0" title="0">{
+        tickerNames := report.TickerNames{Names: Repos.TickerRepo.FindSymbols()}
+        ctx.JSON(http.StatusOK, tickerNames)
+}</span>
+
+func startProfile() <span class="cov0" title="0">{
+        log.Info("Starting profile server...")
+        log.Fatal(http.ListenAndServe("localhost:6060", nil))
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package main
+
+import (
+        "fmt"
+        "market-patterns/model"
+)
+
+func summary(tsym string) <span class="cov8" title="1">{
+
+        ticker := Repos.TickerRepo.FindOne(tsym)
+        for seqName, pattern:= range ticker.FindAllPatterns() </span><span class="cov8" title="1">{
+                fmt.Println(seqName)
+                for result, count := range pattern.FindAll() </span><span class="cov8" title="1">{
+                        fmt.Println(fmt.Sprintf("%v: %v", result, count))
+                        //fmt.Println(fmt.Sprintf("%v avg = %.2f for %v", k, float64(v2)/float64(pattern.TotalCount(k)) * 100, k2))
+                }</span>
+        }
+}
+
+func find50(symbol string) []*model.Period <span class="cov8" title="1">{
+
+        var found = make([]*model.Period, 1)
+        ticker := Repos.TickerRepo.FindOne(symbol)
+        for seqName, pattern := range ticker.FindAllPatterns() </span><span class="cov8" title="1">{
+                for result, count := range pattern.FindAll() </span><span class="cov8" title="1">{
+                        c := float64(count) / float64(pattern.TotalCount()) * 100
+                        if c &gt;= 50 </span><span class="cov8" title="1">{
+                                fmt.Println(fmt.Sprintf("%v avg = %.2f for %v",
+                                        seqName, float64(count)/float64(pattern.TotalCount())*100, result))
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">return found</span>
+}
+
+func findLastPeriod(symbol string) (*model.Period, error) <span class="cov8" title="1">{
+
+        ticker := Repos.TickerRepo.FindOne(symbol)
+        slice := ticker.PeriodSlice()
+        return slice.Last(), nil
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package main
+
+import (
+        "fmt"
+        "github.com/hashicorp/go-multierror"
+        "github.com/pkg/errors"
+        "market-patterns/model"
+)
+
+func trainAll() error <span class="cov8" title="1">{
+
+        var results error
+        for _,symbol := range *Repos.TickerRepo.FindSymbols() </span><span class="cov8" title="1">{
+                err := train(symbol)
+                if err != nil </span><span class="cov0" title="0">{
+                        results = multierror.Append(results, errors.Wrapf(err, "error training %v", symbol))
+                }</span>
+        }
+        <span class="cov8" title="1">return results</span>
+}
+
+func train(symbol string) error <span class="cov8" title="1">{
+
+        ticker := Repos.TickerRepo.FindOne(symbol)
+
+        if ticker == nil </span><span class="cov8" title="1">{
+                return errors.Errorf("unable to train ticker %s due to symbol not found in repo", symbol)
+        }</span>
+
+        // Get a slice of descending sort of periods by date
+        <span class="cov8" title="1">periods := ticker.PeriodSlice()
+
+        if len(periods) &lt; 2 </span><span class="cov8" title="1">{
+                return fmt.Errorf("unable to train: period sequence must have at least 2 periods")
+        }</span>
+
+        // Train the day-to-day results between
+        // two consecutive periods across our period slice
+        <span class="cov8" title="1">var prev *model.Period
+        for i, period := range periods </span><span class="cov8" title="1">{
+
+                // Set the first index to prev and skip,
+                // as we can't compare it to anything
+                if i == 0 </span><span class="cov8" title="1">{
+                        period.SequenceResult = model.NotDefined
+                        prev = period
+                        continue</span>
+                }
+
+                <span class="cov8" title="1">if prev == nil </span><span class="cov0" title="0">{
+                        return errors.New("previous period not set iterating during train")
+                }</span>
+
+                <span class="cov8" title="1">seqResult := model.Calc(prev.Close, period.Close)
+                period.SequenceResult = seqResult
+                // This period become the previous period
+                prev = period</span>
+        }
+
+        <span class="cov8" title="1">Repos.TickerRepo.FindOneAndReplace(ticker)
+
+        return nil</span>
+}
+
+func trainAllSeries(seriesName, seriesDesc string, seriesLen int) error <span class="cov8" title="1">{
+
+        var results error
+        for _, symbol := range *Repos.TickerRepo.FindSymbols() </span><span class="cov8" title="1">{
+                err := trainSeries(symbol, seriesName, seriesDesc, seriesLen)
+                if err != nil </span><span class="cov0" title="0">{
+                        results = multierror.Append(results, errors.Wrapf(err, "error training %v", symbol))
+                }</span>
+        }
+
+        <span class="cov8" title="1">return results</span>
+}
+
+func trainSeries(symbol, seriesName, seriesDesc string, seriesLen int) error <span class="cov8" title="1">{
+
+        ticker := Repos.TickerRepo.FindOne(symbol)
+
+        // Get a slice of descending sort of periods by date
+        periods := ticker.PeriodSlice()
+
+        if len(periods) &lt; seriesLen+1 </span><span class="cov8" title="1">{
+                return fmt.Errorf("unable to train series: a series length of %v, needs at least %v periods",
+                        seriesLen, seriesLen+1)
+        }</span>
+
+        // We have a valid series, so we can add it to the ticker
+        <span class="cov8" title="1">series := ticker.AddSeries(seriesName, seriesDesc, seriesLen)
+
+        for i, period := range periods </span><span class="cov8" title="1">{
+
+                // Skip until we have enough in the pattern sequence
+                // Must have at least series length + 1 to train
+                if i &lt;= seriesLen </span><span class="cov8" title="1">{
+                        continue</span>
+                }
+
+                // Previous pattern name, such as 'UUD' for a pattern of Up -&gt; Up -&gt; Down.
+                <span class="cov8" title="1">var patName string
+                for x := series.SeriesLength; x &gt;= 1; x-- </span><span class="cov8" title="1">{
+                        patName += fmt.Sprint(periods[i-x].SequenceResult)
+                }</span>
+                <span class="cov8" title="1">r := model.Calc(periods[i-1].Close, period.Close)
+
+                // Find the pattern and increment the total for the given result, r
+                pattern := ticker.FindPattern(patName)
+                pattern.Inc(r)
+
+                // Store the result for the series name being trained in the period
+                period.AddSeriesResult(seriesName, r)</span>
+        }
+
+        <span class="cov8" title="1">Repos.TickerRepo.FindOneAndReplace(ticker)
+
+        return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

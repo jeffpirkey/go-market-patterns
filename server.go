@@ -29,18 +29,18 @@ func handlePredict(ctx *gin.Context) {
 	ticker := ctx.Param("id")
 
 	if ticker == "undefined" {
-		ctx.AbortWithError(http.StatusBadRequest, errors.New("no path parameter defined"))
+		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no path parameter defined"))
 	}
 
 	prediction, err := predict(ticker)
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		_ = ctx.AbortWithError(http.StatusBadRequest, err)
 	}
 	ctx.JSON(http.StatusOK, prediction)
 }
 
 func handleTickerNames(ctx *gin.Context) {
-	tickerNames := report.TickerNames{Names: Tickers.FindNames()}
+	tickerNames := report.TickerNames{Names: Repos.TickerRepo.FindSymbols()}
 	ctx.JSON(http.StatusOK, tickerNames)
 }
 

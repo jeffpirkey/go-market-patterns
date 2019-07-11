@@ -1,13 +1,14 @@
 package report
 
 type PredictionSeries struct {
-	Pattern       string             `json:"prior-periods-were"`
-	Probabilities map[string]float64 `json:"probability-of-next-being"`
+	Name          string             `json:"name"`
+	Pattern       string             `json:"priorPeriodsWere"`
+	Probabilities map[string]float64 `json:"probabilityOfNextBeing"`
 }
 
 type Prediction struct {
-	TickerSymbol string                      `json:"ticker"`
-	FromDate     string                      `json:"predicting-from-date"`
-	NextDate     string                      `json:"predicting-date"`
-	Series       map[string]PredictionSeries `json:"series"`
+	TickerSymbol string             `json:"ticker"`
+	FromDate     string             `json:"predictingFromDate"`
+	NextDate     string             `json:"predictingDate"`
+	Series       []PredictionSeries `json:"series"`
 }

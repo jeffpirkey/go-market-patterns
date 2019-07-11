@@ -12,32 +12,32 @@ type Period struct {
 	Volume int       `json:"volume"`
 	// The result of comparison for previous sequence or
 	// Not Defined if the first in a chain of sequences.
-	SequenceResult Result            `json:"sequence-result"`
-	seriesResults  map[string]Result // Maps each series name trained to the calculated result for this period.
+	SequenceResult string            `json:"sequence-result"`
+	SeriesResults  map[string]string // Maps each Series name trained to the calculated result for this period.
 }
 
-// Slice of periods used for sorting and other access methods
+// Slice of Periods used for sorting and other access methods
 type PeriodSlice []*Period
 
 // *********************************************************
 //   Period methods
 // *********************************************************
 
-func (p *Period) AddSeriesResult(seriesName string, r Result) {
-	if p.seriesResults == nil {
-		p.seriesResults = make(map[string]Result)
+func (p *Period) AddSeriesResult(seriesName, result string) {
+	if p.SeriesResults == nil {
+		p.SeriesResults = make(map[string]string)
 	}
-	p.seriesResults[seriesName] = r
+	p.SeriesResults[seriesName] = result
 }
 
-func (p *Period) FindSeriesResult(seriesName string) Result {
-	if p.seriesResults == nil {
-		p.seriesResults = make(map[string]Result)
+func (p *Period) FindSeriesResult(seriesName string) string {
+	if p.SeriesResults == nil {
+		p.SeriesResults = make(map[string]string)
 	}
-	x, found := p.seriesResults[seriesName]
+	x, found := p.SeriesResults[seriesName]
 	if !found {
 		x = NotDefined
-		p.seriesResults[seriesName] = x
+		p.SeriesResults[seriesName] = x
 	}
 	return x
 }

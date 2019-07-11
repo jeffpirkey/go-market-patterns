@@ -1,50 +1,73 @@
 import React from 'react';
+import PredictResult from "./PredictResult";
+import * as utils from './tickerData'
 
 class TickerName extends React.Component {
+
     constructor(props) {
         super(props);
-
+        this.state = {
+            tickerData: {
+                selectedTicker: "",
+                tickers: [],
+                prediction: null
+            }
+        };
         this.handleChange = this.handleChange.bind(this);
-        this.handleSubmit = this.handleSubmit.bind(this);
     }
 
-    handleChange(event) {
-        this.setState({predict: event.target.value});
-    }
+    componentDidMount() {
 
-    handleSubmit(event) {
-        let initialTickers = [];
-
-        fetch('http://localhost:7666/api/latest/predict/' + this.state.predict)
+        fetch('http://localhost:7666/api/latest/ticker-names/')
             .then(response => {
                 if (response.status >= 400) {
                     throw new Error("Bad response from server");
                 }
                 return response.json();
             }).then(data => {
-            this.setState({
-                prediction: data
-            });
+            let state = utils.updateTickers(this.state, data.names);
+            utils.fetchPrediction(this, state)
         });
+    }
 
-        event.preventDefault();
+    handleChange(event) {
+        let predictId = event.target.value;
+        if (predictId === "") {
+            console.error("Invalid predict id: " + predictId);
+            return
+        }
+
+        let url = 'http://localhost:7666/api/latest/predict/' + predictId;
+        fetch(url).then(response => {
+            if (response.status >= 400) {
+                throw new Error("Bad response from server");
+            }
+            return response.json();
+        }).then(data => {
+                let newState = utils.updateSelectedTicker(this.state, predictId);
+                newState = utils.updatePrediction(newState, data);
+                this.setState(newState);
+            }
+        );
     }
 
     render() {
-        let tickers = this.props.state.tickers;
+        console.debug("rendering " + this.state.tickerData.selectedTicker)
+        let tickers = this.state.tickerData.tickers;
         let optionItems = tickers.map((ticker) =>
             <option key={ticker}>{ticker}</option>
         );
 
         return (
-            <form onSubmit={this.handleSubmit}>
-                <label className="App-label">Ticker Name</label>
-                <select value={this.props.state.value} onChange={this.handleChange}>
-                    {optionItems}
-                </select>
-
-                <input type="submit" value="Submit"/>
-            </form>
+            <div class="App-container-center">
+                <div class="App-container-left">
+                    <div class="App-content">Select Ticker:</div>
+                    <select value={this.state.tickerData.selectedTicker} onChange={this.handleChange}>
+                        {optionItems}
+                    </select>
+                </div>
+                <PredictResult tickerData={this.state.tickerData}/>
+            </div>
         )
     }
 }

@@ -1,13 +1,31 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"market-patterns/model"
 )
 
-func train(tSym string) error {
-	ticker := Tickers.Find(tSym)
+func trainAll() error {
+
+	var results error
+	for _, symbol := range *Repos.TickerRepo.FindSymbols() {
+		err := train(symbol)
+		if err != nil {
+			results = multierror.Append(results, errors.Wrapf(err, "error training %v", symbol))
+		}
+	}
+	return results
+}
+
+func train(symbol string) error {
+
+	ticker := Repos.TickerRepo.FindOne(symbol)
+
+	if ticker == nil {
+		return errors.Errorf("unable to train ticker %s due to symbol not found in repo", symbol)
+	}
 
 	// Get a slice of descending sort of periods by date
 	periods := ticker.PeriodSlice()
@@ -39,12 +57,27 @@ func train(tSym string) error {
 		prev = period
 	}
 
+	Repos.TickerRepo.FindOneAndReplace(ticker)
+
 	return nil
 }
 
-func trainSeries(tSym, seriesName, seriesDesc string, seriesLen int) error {
+func trainAllSeries(seriesName, seriesDesc string, seriesLen int) error {
 
-	ticker := Tickers.Find(tSym)
+	var results error
+	for _, symbol := range *Repos.TickerRepo.FindSymbols() {
+		err := trainSeries(symbol, seriesName, seriesDesc, seriesLen)
+		if err != nil {
+			results = multierror.Append(results, errors.Wrapf(err, "error training %v", symbol))
+		}
+	}
+
+	return results
+}
+
+func trainSeries(symbol, seriesName, seriesDesc string, seriesLen int) error {
+
+	ticker := Repos.TickerRepo.FindOne(symbol)
 
 	// Get a slice of descending sort of periods by date
 	periods := ticker.PeriodSlice()
@@ -79,6 +112,8 @@ func trainSeries(tSym, seriesName, seriesDesc string, seriesLen int) error {
 		// Store the result for the series name being trained in the period
 		period.AddSeriesResult(seriesName, r)
 	}
+
+	Repos.TickerRepo.FindOneAndReplace(ticker)
 
 	return nil
 }

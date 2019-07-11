@@ -1,6 +1,11 @@
 package main
 
-import "market-patterns/model"
+import (
+	"github.com/namsral/flag"
+	log "github.com/sirupsen/logrus"
+	"market-patterns/config"
+	"market-patterns/mal"
+)
 
 /*
 Requirements:
@@ -13,12 +18,36 @@ Requirements:
 
 */
 
-var Tickers = model.NewTickers() // Maps ticker symbol to a map of Result patterns and Pattern
+var Repos *mal.Repos
 
 func main() {
 
-	// First load the data
-	loadDir("data/")
+	conf := config.Init("app-config.yaml")
+	Repos = mal.New(conf)
+
+	var load bool
+	flag.BoolVar(&load, "load", false, "load and train")
+	flag.Parse()
+
+	if load {
+		err := loadZip("data/stocks-small.zip")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = trainAll()
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = trainAllSeries("3-period-series", "3 period series", 3)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Info("Completed load and train.")
+
+		return
+	}
 
 	// Start the profiler
 	go startProfile()

@@ -1,59 +1,53 @@
 package model
 
-type Result int
-
 const (
-	Up Result = iota
-	NoChange
-	Down
-	NotDefined
+	Up         = "U"
+	NoChange   = "N"
+	Down       = "D"
+	NotDefined = "x"
 )
 
 // For a given sequence of Result types, a pattern records the number of times that the next sequence is Up, Down, or
 // NoChange.
 type Pattern struct {
-	results map[Result]int
+	Results map[string]int
 }
 
 // *********************************************************
 //   Pattern methods
 // *********************************************************
 
-func (p *Pattern) FindAll() map[Result]int {
-	if p.results == nil {
-		p.results = make(map[Result]int)
+func (p *Pattern) FindAll() map[string]int {
+	if p.Results == nil {
+		p.Results = make(map[string]int)
 	}
-	return p.results
+	return p.Results
 }
 
-func (p *Pattern) Find(r Result) int {
-	if p.results == nil {
-		p.results = make(map[Result]int)
+func (p *Pattern) Find(r string) int {
+	if p.Results == nil {
+		p.Results = make(map[string]int)
 	}
-	return p.results[r]
+	return p.Results[r]
 }
 
 func (p *Pattern) TotalCount() int {
 	sum := 0
-	for _, v := range p.results {
+	for _, v := range p.Results {
 		sum += v
 	}
 	return sum
 }
 
-func (p *Pattern) Inc(result Result) {
-	if p.results == nil {
-		p.results = make(map[Result]int)
+func (p *Pattern) Inc(result string) {
+	if p.Results == nil {
+		p.Results = make(map[string]int)
 	}
-	p.results[result]++
-}
-
-func (r Result) String() string {
-	return [...]string{"U", "N", "D", "x"}[r]
+	p.Results[result]++
 }
 
 // This function calculates a Result using 'prev' as the previous value compared to the current date in 'cur'
-func Calc(prev, cur float64) Result {
+func Calc(prev, cur float64) string {
 	if prev < cur {
 		return Up
 	} else if prev > cur {

@@ -1,94 +1,182 @@
 package main
 
 import (
-	"bufio"
 	"encoding/csv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+	"market-patterns/config"
+	"market-patterns/mal"
 	"market-patterns/model"
-	"os"
 	"strings"
 	"testing"
 )
 
-var in = strings.Join([]string{
-	`Date,Open,High,Low,Close,Volume`, // Header skipped
-	`2019-01-01, 1, 2, 3, 2, 100`,     // N/A
-	`2019-01-02, 1, 2, 3, 3, 101`,     // N/A
-	`2019-01-03, 1, 2, 3, 4, 102`,     // N/A
-	`2019-01-04, 1, 2, 3, 5, 103`,     // N/A
-	`2019-01-05, 1, 2, 3, 2, 104`,     // UUU -> D
-	`2019-01-06, 1, 2, 3, 3, 105`,     // UUD -> U
-	`2019-01-07, 1, 2, 3, 4, 106`,     // UDU -> U
-	`2019-01-08, 1, 2, 3, 5, 107`,     // DUU -> U
-	`2019-01-09, 1, 2, 3, 6, 108`,     // UUU -> U
-	`2019-01-10, 1, 2, 3, 2, 109`,     // UUU -> D
-	`2019-01-11, 1, 2, 3, 3, 110`,     // UUD -> U
-	`2019-01-12, 1, 2, 3, 4, 111`,     // UDU -> U
-	`2019-01-13, 1, 2, 3, 5, 112`,     // DUU -> U
-	`2019-01-14, 1, 2, 3, 6, 113`,     // UUU -> U
-}, "\n")
+type TrainTestSuite struct {
+	suite.Suite
+}
 
-func TestTrain(t *testing.T) {
-	assert := assert.New(t)
+func TestTrainTestSuite(t *testing.T) {
+	suite.Run(t, new(TrainTestSuite))
+}
+
+func (suite *TrainTestSuite) SetupTest() {
+	conf := config.Init("app-config-test.yaml")
+	Repos = mal.New(conf)
+}
+
+func (suite *TrainTestSuite) TearDownTest() {
+	Repos.DropAll(suite.T())
+}
+
+// *********************************************************
+// 	 Test Train functions
+// *********************************************************
+
+func (suite *TrainTestSuite) TestTrain() {
 
 	r := csv.NewReader(strings.NewReader(in))
 	r.TrimLeadingSpace = true
 
-	load("test", r)
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
 
-	err := train("test")
-	if err != nil {
-		assert.Fail("test error", err)
-	}
+	err = train("test")
+	assert.NoError(suite.T(), err, "Expect no errors training data")
 
-	ticker := Tickers.Find("test")
+	ticker := Repos.TickerRepo.FindOne("test")
 	slice := ticker.PeriodSlice()
 
-	assert.Equal(model.NotDefined, slice[0].SequenceResult, "Expected first sequence to be Not Defined")
-	assert.Equal(model.Up, slice[1].SequenceResult, "Expected sequence to be Up")
-	assert.Equal(model.Down, slice[4].SequenceResult, "Expected sequence to be Down")
-	assert.Equal(model.Up, slice[13].SequenceResult, "Expected last sequence to be Up")
-	assert.Equal(model.Up, slice.Last().SequenceResult, "Expected last sequence via Last() to be Up")
+	assert.Equal(suite.T(), model.NotDefined, slice[0].SequenceResult, "Expected first sequence to be Not Defined")
+	assert.Equal(suite.T(), model.Up, slice[1].SequenceResult, "Expected sequence to be Up")
+	assert.Equal(suite.T(), model.Down, slice[4].SequenceResult, "Expected sequence to be Down")
+	assert.Equal(suite.T(), model.Up, slice[13].SequenceResult, "Expected last sequence to be Up")
+	assert.Equal(suite.T(), model.Up, slice.Last().SequenceResult, "Expected last sequence via Last() to be Up")
 }
 
-func TestTrainSeries(t *testing.T) {
-	assert := assert.New(t)
+func (suite *TrainTestSuite) TestTrainMissingSymbol() {
+
+	r := csv.NewReader(strings.NewReader(in))
+	r.TrimLeadingSpace = true
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
+	err = train("bad")
+	assert.Error(suite.T(), err, "Expect train of missing symbol to have errors")
+}
+
+func (suite *TrainTestSuite) TestTrainBadPeriodSize() {
+
+	r := csv.NewReader(strings.NewReader(inBadPeriodLength))
+	r.TrimLeadingSpace = true
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
+	err = train("test")
+	assert.Error(suite.T(), err, "Expect train of missing symbol to have errors")
+}
+
+func (suite *TrainTestSuite) TestTrainNoLoad() {
+	err := train("test")
+	assert.Error(suite.T(), err, "Expect train of missing symbol to have errors")
+}
+
+func (suite *TrainTestSuite) TestTrainAll() {
 
 	r := csv.NewReader(strings.NewReader(in))
 	r.TrimLeadingSpace = true
 
-	load("test", r)
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
 
-	err := train("test")
-	if err != nil {
-		assert.Fail("test error", err)
-	}
-	err = trainSeries("test", "3-period-series", "3 period series", 3)
-	if err != nil {
-		assert.Fail("test error", err)
-	}
+	err = trainAll()
+	assert.NoError(suite.T(), err, "Expect no errors training data")
 
-	ticker := Tickers.Find("test")
-	assert.NotEmpty(ticker.FindAllPatterns(), "Expected patterns to be populated")
+	ticker := Repos.TickerRepo.FindOne("test")
+	slice := ticker.PeriodSlice()
+
+	assert.Equal(suite.T(), model.NotDefined, slice[0].SequenceResult, "Expected first sequence to be Not Defined")
+	assert.Equal(suite.T(), model.Up, slice[1].SequenceResult, "Expected sequence to be Up")
+	assert.Equal(suite.T(), model.Down, slice[4].SequenceResult, "Expected sequence to be Down")
+	assert.Equal(suite.T(), model.Up, slice[13].SequenceResult, "Expected last sequence to be Up")
+	assert.Equal(suite.T(), model.Up, slice.Last().SequenceResult, "Expected last sequence via Last() to be Up")
 }
 
-func TestTrainFile(t *testing.T) {
-	assert := assert.New(t)
+func (suite *TrainTestSuite) TestTrainAllWithError() {
 
-	csvFile, _ := os.Open("data/zf.us.txt")
-	reader := csv.NewReader(bufio.NewReader(csvFile))
+	r := csv.NewReader(strings.NewReader(inBadPeriodLength))
+	r.TrimLeadingSpace = true
 
-	load("zf", reader)
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
 
-	err := train("zf")
-	if err != nil {
-		assert.Fail("test error", err)
-	}
-	err = trainSeries("zf", "3-period-series", "3 period series", 3)
-	if err != nil {
-		assert.Fail("test error", err)
-	}
+	err = trainAll()
+	assert.Error(suite.T(), err, "Expect errors training data")
+}
 
-	ticker := Tickers.Find("test")
-	assert.NotEmpty(ticker.FindAllPatterns(), "Expected patterns to be populated")
+// *********************************************************
+// Test train series functions
+// *********************************************************
+
+func (suite *TrainTestSuite) TestTrainSeries() {
+
+	r := csv.NewReader(strings.NewReader(in))
+	r.TrimLeadingSpace = true
+
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
+
+	err = train("test")
+	assert.NoError(suite.T(), err, "Expect no errors training")
+
+	err = trainSeries("test", "3-period-series", "3 period series", 3)
+	assert.NoError(suite.T(), err, "Expect no errors training series")
+
+	ticker := Repos.TickerRepo.FindOne("test")
+	assert.NotEmpty(suite.T(), ticker.FindAllPatterns(), "Expected patterns to be populated")
+}
+
+func (suite *TrainTestSuite) TestTrainSeriesBadPeriodLength() {
+
+	r := csv.NewReader(strings.NewReader(inBadSeriesLength))
+	r.TrimLeadingSpace = true
+
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
+
+	err = train("test")
+	assert.NoError(suite.T(), err, "Expect no errors training")
+
+	err = trainSeries("test", "3-period-series", "3 period series", 3)
+	assert.Error(suite.T(), err, "Expect errors training series")
+}
+
+func (suite *TrainTestSuite) TestTrainSeriesAll() {
+
+	r := csv.NewReader(strings.NewReader(in))
+	r.TrimLeadingSpace = true
+
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
+
+	err = trainAll()
+	assert.NoError(suite.T(), err, "Expect no errors training data")
+
+	err = trainAllSeries("3-period-series", "3 period series", 3)
+	assert.NoError(suite.T(), err, "Expect no errors training series")
+
+	ticker := Repos.TickerRepo.FindOne("test")
+	assert.NotEmpty(suite.T(), ticker.FindAllPatterns(), "Expected patterns to be populated")
+}
+
+func (suite *TrainTestSuite) TestTrainSeriesAllWithError() {
+
+	r := csv.NewReader(strings.NewReader(inBadSeriesLength))
+	r.TrimLeadingSpace = true
+
+	err := load("test", r)
+	assert.NoError(suite.T(), err, "Expected no errors loading test data")
+
+	err = trainAll()
+	assert.NoError(suite.T(), err, "Expect no errors training")
+
+	err = trainAllSeries("3-period-series", "3 period series", 3)
+	assert.Error(suite.T(), err, "Expect error training series")
 }

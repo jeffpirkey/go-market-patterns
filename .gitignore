@@ -12,3 +12,6 @@
 *.out
 
 .idea/
+
+/ui/mode_modules/
+
