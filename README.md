@@ -67,6 +67,5 @@ Click [here](output/ibm.md) for the results of IBM pattern generation.
 
 ## What You'll See
 
-![Example Application][logo]
-[logo]: output/example.png
+![Image](output/example.png)
 
