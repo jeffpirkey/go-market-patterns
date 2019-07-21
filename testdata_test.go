@@ -2,7 +2,7 @@ package main
 
 import "strings"
 
-var in = strings.Join([]string{
+var testInputData = strings.Join([]string{
 	`Date,Open,High,Low,Close,Volume`, // Header skipped
 	`2019-01-01, 1, 2, 3, 2, 100`,     // N/A
 	`2019-01-02, 1, 2, 3, 3, 101`,     // N/A
@@ -20,13 +20,13 @@ var in = strings.Join([]string{
 	`2019-01-14, 1, 2, 3, 6, 113`,     // UUU -> U
 }, "\n")
 
-var inBadPeriodLength = strings.Join([]string{
+var testInBadPeriodLength = strings.Join([]string{
 	`Date,Open,High,Low,Close,Volume`, // Header skipped
 	`2019-01-01, 1, 2, 3, 2, 100`,     // N/A
 }, "\n")
 
-var inBadSeriesLength = strings.Join([]string{
-	`Date,Open,High,Low,Close,Volume`, // Header skipped
-	`2019-01-01, 1, 2, 3, 2, 100`,     // N/A
-	`2019-01-02, 1, 2, 3, 3, 101`,     // N/A
-}, "\n")
+var testCompanyData = map[string]string{"test": "Test Company"}
+var testBadCompanyData = map[string]string{"bad": "Bad"}
+
+var testIbmFile = "data/test/ibm.us.txt"
+var testCompanyFile = "data/nyse-symb-name.csv"

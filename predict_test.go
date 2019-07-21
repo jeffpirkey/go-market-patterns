@@ -30,32 +30,19 @@ func (suite *PredictTestSuite) TearDownTest() {
 
 func (suite *PredictTestSuite) TestPredict() {
 
-	r := csv.NewReader(strings.NewReader(in))
+	r := csv.NewReader(strings.NewReader(testInputData))
 	r.TrimLeadingSpace = true
+	dataMap := make(map[model.Ticker][]*model.Period)
+	err := loadData("test", r, testCompanyData, dataMap)
+	assert.NoError(suite.T(), err)
 
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-
-	err = train("test")
-	if err != nil {
-		assert.Fail(suite.T(), "test error", err)
-	}
-	err = trainSeries("test", "3-periods", "3 period series", 3)
-	if err != nil {
-		assert.Fail(suite.T(), "test error", err)
-	}
+	err = train(3, dataMap)
+	assert.NoError(suite.T(), err)
 
 	prediction, err := predict("test")
-	if err != nil {
-		assert.Fail(suite.T(), "Did not expect an error", err)
-	}
-	assert.Equal(suite.T(), "test", prediction.TickerSymbol,
-		"Expected ticker system to be equal to 'test'")
+	assert.NoError(suite.T(), err)
 
-	assert.Equal(suite.T(), 0.5, prediction.Series[0].Probabilities[model.Up],
-		"Expected prediction for Up to be 50%")
-	assert.Equal(suite.T(), 0.5, prediction.Series[0].Probabilities[model.Down],
-		"Expected prediction for Up to be 50%")
-
-	//fmt.Println(*utils.ToJsonString(prediction))
+	assert.Equal(suite.T(), "test", prediction.TickerSymbol)
+	assert.Equal(suite.T(), 0.5, prediction.Series[0].ProbabilityUp)
+	assert.Equal(suite.T(), 0.5, prediction.Series[0].ProbabilityDown)
 }

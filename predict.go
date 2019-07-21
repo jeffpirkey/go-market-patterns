@@ -4,48 +4,64 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"market-patterns/model"
-	"market-patterns/report"
+	"market-patterns/model/report"
 	"strings"
+	"time"
 )
 
 func predict(symbol string) (report.Prediction, error) {
 
-	ticker := Repos.TickerRepo.FindOne(symbol)
-	slice := ticker.PeriodSlice()
+	startTime := time.Now()
+
+	var prediction report.Prediction
+	slice, err := Repos.PeriodRepo.FindBySymbol(symbol, Repos.PeriodRepo.SortAsc())
+	if err != nil {
+		return prediction, err
+	}
 
 	fromDay := slice.Last().Date
 	nextDay := fromDay.AddDate(0, 0, 1)
-	prediction := report.Prediction{TickerSymbol: symbol,
+	prediction = report.Prediction{TickerSymbol: symbol,
 		NextDate: fmt.Sprintf("%d-%02d-%02d", nextDay.Year(), nextDay.Month(), nextDay.Day()),
 		FromDate: fmt.Sprintf("%d-%02d-%02d", fromDay.Year(), fromDay.Month(), fromDay.Day())}
 
-	for seriesName, series := range ticker.FindAllSeries() {
+	series, err := Repos.SeriesRepo.FindBySymbol(symbol)
+	if err != nil {
+		return prediction, err
+	}
 
-		log.Infof("Processing prediction for %v the series of %v...", symbol, seriesName)
+	for _, s := range series {
 
-		lastPeriods := slice.LastByRange(series.SeriesLength)
+		log.Infof("Processing prediction for %v the series of %v...", symbol, s.Name)
+
+		lastPeriods := slice.LastByRange(s.Length)
 		var match string
 		for _, period := range lastPeriods {
 			// Find the result for the series name being
 			// predicted for each period
-			match += period.SequenceResult
+			match += period.DailyResult
 		}
 
-		ps := report.PredictionSeries{Name: seriesName, Pattern: match, Probabilities: make(map[string]float64)}
-		prediction.Series = append(prediction.Series, ps)
+		ps := report.PredictionSeries{Name: s.Name, Pattern: match}
+		prediction.Series = append(prediction.Series, &ps)
 
 		if strings.Contains(match, model.NotDefined) {
 			log.Info("No supporting data")
 		} else {
-			pattern := ticker.FindPattern(match)
-			for result, count := range pattern.FindAll() {
-				pb := float64(count) / float64(pattern.TotalCount())
-				ps.Probabilities[result] = pb
+			pattern, err := Repos.PatternRepo.FindOneBySymbolAndValue(symbol, match)
+			if err != nil {
+				return prediction, err
 			}
+
+			ps.ProbabilityUp = float64(pattern.UpCount) / float64(pattern.TotalCount)
+			ps.ProbabilityDown = float64(pattern.DownCount) / float64(pattern.TotalCount)
+			ps.ProbabilityNoChange = float64(pattern.NoChangeCount) / float64(pattern.TotalCount)
 		}
 
-		log.Infof("Finished processing prediction for ticker %v and series %v", symbol, seriesName)
+		log.Infof("Finished processing prediction for ticker %v and series %v", symbol, s.Name)
 	}
+
+	log.Infof("Generating predictions took %0.2f minutes", time.Since(startTime).Minutes())
 
 	return prediction, nil
 }

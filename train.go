@@ -3,117 +3,136 @@ package main
 import (
 	"fmt"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"market-patterns/model"
+	"strconv"
+	"time"
 )
 
-func trainAll() error {
+func train(seriesLength int, dataMap map[model.Ticker][]*model.Period) error {
 
-	var results error
-	for _, symbol := range *Repos.TickerRepo.FindSymbols() {
-		err := train(symbol)
-		if err != nil {
-			results = multierror.Append(results, errors.Wrapf(err, "error training %v", symbol))
-		}
-	}
-	return results
-}
+	log.Infof("Start train of periods with length %v...", seriesLength)
+	startTime := time.Now()
 
-func train(symbol string) error {
+	var trainErrors error
 
-	ticker := Repos.TickerRepo.FindOne(symbol)
+	var tickers []model.Ticker
+	for ticker, periods := range dataMap {
 
-	if ticker == nil {
-		return errors.Errorf("unable to train ticker %s due to symbol not found in repo", symbol)
-	}
-
-	// Get a slice of descending sort of periods by date
-	periods := ticker.PeriodSlice()
-
-	if len(periods) < 2 {
-		return fmt.Errorf("unable to train: period sequence must have at least 2 periods")
-	}
-
-	// Train the day-to-day results between
-	// two consecutive periods across our period slice
-	var prev *model.Period
-	for i, period := range periods {
-
-		// Set the first index to prev and skip,
-		// as we can't compare it to anything
-		if i == 0 {
-			period.SequenceResult = model.NotDefined
-			prev = period
+		if len(periods) < 2 {
+			trainErrors =
+				multierror.Append(fmt.Errorf("unable to train: period sequence must have at least 2 periods"))
 			continue
 		}
 
-		if prev == nil {
-			return errors.New("previous period not set iterating during train")
+		tickers = append(tickers, ticker)
+
+		// Train the day-to-day results between
+		// two consecutive periods across our period slice
+		var prev *model.Period
+		for i, period := range periods {
+
+			// Set the first index to prev and skip,
+			// as we can't compare it to anything
+			if i == 0 {
+				period.DailyResult = model.NotDefined
+				prev = period
+				continue
+			}
+
+			seqResult := model.Calc(prev.Close, period.Close)
+			period.DailyResult = seqResult
+			// This period become the previous period
+			prev = period
 		}
 
-		seqResult := model.Calc(prev.Close, period.Close)
-		period.SequenceResult = seqResult
-		// This period become the previous period
-		prev = period
+		patterns, err := trainSeries(seriesLength, periods)
+		if err != nil {
+			trainErrors = multierror.Append(trainErrors, err)
+			continue
+		}
+
+		err = Repos.PeriodRepo.InsertMany(periods)
+		if err != nil {
+			trainErrors = multierror.Append(trainErrors, err)
+		}
+
+		err = Repos.PatternRepo.InsertMany(patterns)
+		if err != nil {
+			trainErrors = multierror.Append(trainErrors, err)
+		}
+
+		series := &model.Series{Symbol: ticker.Symbol, Length: seriesLength,
+			Name: strconv.Itoa(seriesLength) + "-period-series"}
+		err = Repos.SeriesRepo.InsertOne(series)
+		if err != nil {
+			trainErrors = multierror.Append(trainErrors, err)
+		}
 	}
 
-	Repos.TickerRepo.FindOneAndReplace(ticker)
+	err := Repos.TickerRepo.InsertMany(tickers)
+
+	if err != nil {
+		trainErrors = multierror.Append(trainErrors, err)
+		log.Infof("Completed train of period with length %v with errors took %0.2f minutes",
+			seriesLength, time.Since(startTime).Minutes())
+		return trainErrors
+	}
+
+	log.Infof("Success training periods with length %v with errors took %0.2f minutes",
+		seriesLength, time.Since(startTime).Minutes())
 
 	return nil
 }
 
-func trainAllSeries(seriesName, seriesDesc string, seriesLen int) error {
+func trainSeries(seriesLength int, periods []*model.Period) ([]*model.Pattern, error) {
 
-	var results error
-	for _, symbol := range *Repos.TickerRepo.FindSymbols() {
-		err := trainSeries(symbol, seriesName, seriesDesc, seriesLen)
-		if err != nil {
-			results = multierror.Append(results, errors.Wrapf(err, "error training %v", symbol))
-		}
+	var patterns []*model.Pattern
+	if len(periods) < seriesLength+1 {
+		return patterns, fmt.Errorf("unable to train series: a series length of %v, needs at least %v periods",
+			seriesLength, seriesLength+1)
 	}
 
-	return results
-}
-
-func trainSeries(symbol, seriesName, seriesDesc string, seriesLen int) error {
-
-	ticker := Repos.TickerRepo.FindOne(symbol)
-
-	// Get a slice of descending sort of periods by date
-	periods := ticker.PeriodSlice()
-
-	if len(periods) < seriesLen+1 {
-		return fmt.Errorf("unable to train series: a series length of %v, needs at least %v periods",
-			seriesLen, seriesLen+1)
-	}
-
-	// We have a valid series, so we can add it to the ticker
-	series := ticker.AddSeries(seriesName, seriesDesc, seriesLen)
-
+	var patternMap = make(map[string]*model.Pattern)
 	for i, period := range periods {
 
-		// Skip until we have enough in the pattern sequence
+		// Skip until we have enough testInputData the pattern sequence
 		// Must have at least series length + 1 to train
-		if i <= seriesLen {
+		if i <= seriesLength {
 			continue
 		}
 
 		// Previous pattern name, such as 'UUD' for a pattern of Up -> Up -> Down.
 		var patName string
-		for x := series.SeriesLength; x >= 1; x-- {
-			patName += fmt.Sprint(periods[i-x].SequenceResult)
+		for x := seriesLength; x >= 1; x-- {
+			patName += fmt.Sprint(periods[i-x].DailyResult)
 		}
 		r := model.Calc(periods[i-1].Close, period.Close)
 
 		// Find the pattern and increment the total for the given result, r
-		pattern := ticker.FindPattern(patName)
-		pattern.Inc(r)
+		var pattern *model.Pattern
+		pattern, found := patternMap[patName]
+		if !found {
+			pattern = &model.Pattern{}
+			pattern.Symbol = period.Symbol
+			pattern.Value = patName
+			patternMap[patName] = pattern
+		}
 
-		// Store the result for the series name being trained in the period
-		period.AddSeriesResult(seriesName, r)
+		switch r {
+		case "U":
+			pattern.UpCount++
+		case "D":
+			pattern.DownCount++
+		case "N":
+			pattern.NoChangeCount++
+		}
+		pattern.TotalCount++
 	}
 
-	Repos.TickerRepo.FindOneAndReplace(ticker)
+	for _, v := range patternMap {
+		patterns = append(patterns, v)
+	}
 
-	return nil
+	return patterns, nil
 }

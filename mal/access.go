@@ -15,9 +15,13 @@ var client *mongo.Client
 // Exported type for repository access
 
 type Repos struct {
-	client     *mongo.Client
-	config     *config.AppConfig
-	TickerRepo *TickerRepo
+	client          *mongo.Client
+	config          *config.AppConfig
+	TickerRepo      *TickerRepo
+	PatternRepo     *PatternRepo
+	PeriodRepo      *PeriodRepo
+	SeriesRepo      *SeriesRepo
+	GraphController *GraphController
 }
 
 func New(config *config.AppConfig) *Repos {
@@ -48,6 +52,20 @@ func (repos *Repos) Init(config *config.AppConfig) {
 	coll := client.Database(config.Runtime.MongoDBName).Collection("tickers")
 	repos.TickerRepo = &TickerRepo{coll, nil, nil}
 	repos.TickerRepo.Init()
+
+	coll = client.Database(config.Runtime.MongoDBName).Collection("patterns")
+	repos.PatternRepo = &PatternRepo{coll, nil, nil}
+	repos.PatternRepo.Init()
+
+	coll = client.Database(config.Runtime.MongoDBName).Collection("periods")
+	repos.PeriodRepo = &PeriodRepo{coll, nil, nil, nil}
+	repos.PeriodRepo.Init()
+
+	coll = client.Database(config.Runtime.MongoDBName).Collection("series")
+	repos.SeriesRepo = &SeriesRepo{coll, nil, nil}
+	repos.SeriesRepo.Init()
+
+	repos.GraphController = &GraphController{repos.PeriodRepo, repos.PatternRepo}
 }
 
 func (repos *Repos) DropAll(t *testing.T) {
@@ -56,7 +74,6 @@ func (repos *Repos) DropAll(t *testing.T) {
 		log.Errorf("only able to delete databases when in test mode")
 		return
 	}
-
 	db := client.Database(repos.config.Runtime.MongoDBName)
 	err := db.Drop(context.TODO())
 	if err != nil {

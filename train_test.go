@@ -34,149 +34,36 @@ func (suite *TrainTestSuite) TearDownTest() {
 
 func (suite *TrainTestSuite) TestTrain() {
 
-	r := csv.NewReader(strings.NewReader(in))
+	r := csv.NewReader(strings.NewReader(testInputData))
 	r.TrimLeadingSpace = true
 
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
+	dataMap := make(map[model.Ticker][]*model.Period)
+	err := loadData("test", r, testCompanyData, dataMap)
+	assert.NoError(suite.T(), err)
 
-	err = train("test")
-	assert.NoError(suite.T(), err, "Expect no errors training data")
+	err = train(3, dataMap)
+	assert.NoError(suite.T(), err)
+	assert.NotEmpty(suite.T(), dataMap)
 
-	ticker := Repos.TickerRepo.FindOne("test")
-	slice := ticker.PeriodSlice()
-
-	assert.Equal(suite.T(), model.NotDefined, slice[0].SequenceResult, "Expected first sequence to be Not Defined")
-	assert.Equal(suite.T(), model.Up, slice[1].SequenceResult, "Expected sequence to be Up")
-	assert.Equal(suite.T(), model.Down, slice[4].SequenceResult, "Expected sequence to be Down")
-	assert.Equal(suite.T(), model.Up, slice[13].SequenceResult, "Expected last sequence to be Up")
-	assert.Equal(suite.T(), model.Up, slice.Last().SequenceResult, "Expected last sequence via Last() to be Up")
-}
-
-func (suite *TrainTestSuite) TestTrainMissingSymbol() {
-
-	r := csv.NewReader(strings.NewReader(in))
-	r.TrimLeadingSpace = true
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-	err = train("bad")
-	assert.Error(suite.T(), err, "Expect train of missing symbol to have errors")
+	var periods model.PeriodSlice
+	for _, v := range dataMap {
+		periods = v
+	}
+	assert.Equal(suite.T(), model.NotDefined, periods[0].DailyResult)
+	assert.Equal(suite.T(), model.Up, periods[1].DailyResult)
+	assert.Equal(suite.T(), model.Down, periods[4].DailyResult)
+	assert.Equal(suite.T(), model.Up, periods[13].DailyResult)
+	assert.Equal(suite.T(), model.Up, periods.Last().DailyResult)
 }
 
 func (suite *TrainTestSuite) TestTrainBadPeriodSize() {
 
-	r := csv.NewReader(strings.NewReader(inBadPeriodLength))
+	r := csv.NewReader(strings.NewReader(testInBadPeriodLength))
 	r.TrimLeadingSpace = true
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-	err = train("test")
-	assert.Error(suite.T(), err, "Expect train of missing symbol to have errors")
-}
+	dataMap := make(map[model.Ticker][]*model.Period)
+	err := loadData("test", r, testCompanyData, dataMap)
+	assert.NoError(suite.T(), err)
 
-func (suite *TrainTestSuite) TestTrainNoLoad() {
-	err := train("test")
-	assert.Error(suite.T(), err, "Expect train of missing symbol to have errors")
-}
-
-func (suite *TrainTestSuite) TestTrainAll() {
-
-	r := csv.NewReader(strings.NewReader(in))
-	r.TrimLeadingSpace = true
-
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-
-	err = trainAll()
-	assert.NoError(suite.T(), err, "Expect no errors training data")
-
-	ticker := Repos.TickerRepo.FindOne("test")
-	slice := ticker.PeriodSlice()
-
-	assert.Equal(suite.T(), model.NotDefined, slice[0].SequenceResult, "Expected first sequence to be Not Defined")
-	assert.Equal(suite.T(), model.Up, slice[1].SequenceResult, "Expected sequence to be Up")
-	assert.Equal(suite.T(), model.Down, slice[4].SequenceResult, "Expected sequence to be Down")
-	assert.Equal(suite.T(), model.Up, slice[13].SequenceResult, "Expected last sequence to be Up")
-	assert.Equal(suite.T(), model.Up, slice.Last().SequenceResult, "Expected last sequence via Last() to be Up")
-}
-
-func (suite *TrainTestSuite) TestTrainAllWithError() {
-
-	r := csv.NewReader(strings.NewReader(inBadPeriodLength))
-	r.TrimLeadingSpace = true
-
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-
-	err = trainAll()
-	assert.Error(suite.T(), err, "Expect errors training data")
-}
-
-// *********************************************************
-// Test train series functions
-// *********************************************************
-
-func (suite *TrainTestSuite) TestTrainSeries() {
-
-	r := csv.NewReader(strings.NewReader(in))
-	r.TrimLeadingSpace = true
-
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-
-	err = train("test")
-	assert.NoError(suite.T(), err, "Expect no errors training")
-
-	err = trainSeries("test", "3-period-series", "3 period series", 3)
-	assert.NoError(suite.T(), err, "Expect no errors training series")
-
-	ticker := Repos.TickerRepo.FindOne("test")
-	assert.NotEmpty(suite.T(), ticker.FindAllPatterns(), "Expected patterns to be populated")
-}
-
-func (suite *TrainTestSuite) TestTrainSeriesBadPeriodLength() {
-
-	r := csv.NewReader(strings.NewReader(inBadSeriesLength))
-	r.TrimLeadingSpace = true
-
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-
-	err = train("test")
-	assert.NoError(suite.T(), err, "Expect no errors training")
-
-	err = trainSeries("test", "3-period-series", "3 period series", 3)
-	assert.Error(suite.T(), err, "Expect errors training series")
-}
-
-func (suite *TrainTestSuite) TestTrainSeriesAll() {
-
-	r := csv.NewReader(strings.NewReader(in))
-	r.TrimLeadingSpace = true
-
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-
-	err = trainAll()
-	assert.NoError(suite.T(), err, "Expect no errors training data")
-
-	err = trainAllSeries("3-period-series", "3 period series", 3)
-	assert.NoError(suite.T(), err, "Expect no errors training series")
-
-	ticker := Repos.TickerRepo.FindOne("test")
-	assert.NotEmpty(suite.T(), ticker.FindAllPatterns(), "Expected patterns to be populated")
-}
-
-func (suite *TrainTestSuite) TestTrainSeriesAllWithError() {
-
-	r := csv.NewReader(strings.NewReader(inBadSeriesLength))
-	r.TrimLeadingSpace = true
-
-	err := load("test", r)
-	assert.NoError(suite.T(), err, "Expected no errors loading test data")
-
-	err = trainAll()
-	assert.NoError(suite.T(), err, "Expect no errors training")
-
-	err = trainAllSeries("3-period-series", "3 period series", 3)
-	assert.Error(suite.T(), err, "Expect error training series")
+	err = train(3, dataMap)
+	assert.Error(suite.T(), err)
 }

@@ -13,7 +13,7 @@
 
 .idea/
 
-/ui/mode_modules/
+ui/mode_modules/
 
 # ignore the big file
-/data/stocks.zip
+data/stocks.zip

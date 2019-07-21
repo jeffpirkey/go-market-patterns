@@ -8,7 +8,7 @@ BINARY_NAME=market-patterns
 COVERAGE_OUT=coverage.out
 COVERAGE_HTML=coverage.html
 
-all: test build
+all: test run
 
 build:
 	$(GOBUILD) -o $(BINARY_NAME) -v
@@ -17,9 +17,9 @@ run:
 	$(GOBUILD) -o $(BINARY_NAME) -v ./...
 	./$(BINARY_NAME)
 
-run-load:
+trunc-load:
 	$(GOBUILD) -o $(BINARY_NAME) -v ./...
-	./$(BINARY_NAME) -load=true
+	./$(BINARY_NAME) -start-http-server=false -data-file=data/stocks.zip -company-file=data/nyse-symb-name.csv
 
 test:
 	$(GOTEST)
