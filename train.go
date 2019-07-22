@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"market-patterns/model"
 	"strconv"
@@ -21,7 +22,7 @@ func train(seriesLength int, dataMap map[model.Ticker][]*model.Period) error {
 
 		if len(periods) < 2 {
 			trainErrors =
-				multierror.Append(fmt.Errorf("unable to train: period sequence must have at least 2 periods"))
+				multierror.Append(errors.New("unable to train: period sequence must have at least 2 periods"))
 			continue
 		}
 

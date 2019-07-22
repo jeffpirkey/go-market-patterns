@@ -13,7 +13,7 @@ class SelectTicker extends React.Component {
 
     componentDidMount() {
 
-        fetch('http://localhost:7666/api/latest/tickers/')
+        fetch('http://localhost:8081/api/latest/tickers/')
             .then(response => {
                 if (response.status >= 400) {
                     throw new Error("Bad response from server");

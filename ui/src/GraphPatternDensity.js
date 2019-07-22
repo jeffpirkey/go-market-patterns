@@ -10,7 +10,7 @@ class StockPriceGraph extends Component {
     componentDidMount() {
         let predictId = this.props.selectedSymbol;
         if (predictId) {
-            let url = 'http://localhost:7666/api/latest/graph/pattern-density/' + predictId;
+            let url = 'http://localhost:8081/api/latest/graph/pattern-density/' + predictId;
             fetch(url).then(response => {
                 if (response.status >= 400) {
                     throw new Error("Bad response from server");
@@ -27,7 +27,7 @@ class StockPriceGraph extends Component {
         if (prevProps.selectedSymbol !== this.props.selectedSymbol) {
             let predictId = this.props.selectedSymbol;
             if (predictId) {
-                let url = 'http://localhost:7666/api/latest/graph/pattern-density/' + predictId;
+                let url = 'http://localhost:8081/api/latest/graph/pattern-density/' + predictId;
                 fetch(url).then(response => {
                     if (response.status >= 400) {
                         throw new Error("Bad response from server");

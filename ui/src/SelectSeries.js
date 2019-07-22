@@ -12,7 +12,7 @@ class TickerName extends React.Component {
     componentDidMount() {
 
         let predictId = this.props.selectedSymbol;
-        fetch('http://localhost:7666/api/latest/series/' + predictId)
+        fetch('http://localhost:8081/api/latest/series/' + predictId)
             .then(response => {
                 if (response.status >= 400) {
                     throw new Error("Bad response from server");
@@ -27,7 +27,7 @@ class TickerName extends React.Component {
 
         if (prevProps.selectedSymbol !== this.props.selectedSymbol) {
             let predictId = this.props.selectedSymbol;
-            fetch('http://localhost:7666/api/latest/series/' + predictId)
+            fetch('http://localhost:8081/api/latest/series/' + predictId)
                 .then(response => {
                     if (response.status >= 400) {
                         throw new Error("Bad response from server");

@@ -6,7 +6,7 @@ class ReportPrediction extends React.Component {
 
         let predictId = this.props.selectedSymbol;
         if (predictId) {
-            let url = 'http://localhost:7666/api/latest/predict/' + predictId;
+            let url = 'http://localhost:8081/api/latest/predict/' + predictId;
             fetch(url).then(response => {
                 if (response.status >= 400) {
                     throw new Error("Bad response from server");
@@ -23,7 +23,7 @@ class ReportPrediction extends React.Component {
         if (prevProps.selectedSymbol !== this.props.selectedSymbol) {
             let predictId = this.props.selectedSymbol;
             if (predictId) {
-                let url = 'http://localhost:7666/api/latest/predict/' + predictId;
+                let url = 'http://localhost:8081/api/latest/predict/' + predictId;
                 fetch(url).then(response => {
                     if (response.status >= 400) {
                         throw new Error("Bad response from server");
