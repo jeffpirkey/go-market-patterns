@@ -1,3 +1,6 @@
 runtime:
-  mongo-db-url: "mongodb://localhost:27017"
-  mongo-db-name: "test"
+  mongo-url: "mongodb://localhost:27017"
+  mongo-dbname: "marketPatterns"
+  log-level: "DEBUG"
+  start-http-server: true
+  http-server-url: ":8080"

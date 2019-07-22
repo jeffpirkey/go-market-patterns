@@ -24,6 +24,7 @@ type RuntimeConfig struct {
 	MongoDBName     string `yaml:"mongo-dbname"`
 	LogLevel        string `yaml:"log-level"`
 	StartHttpServer bool   `yaml:"start-http-server"`
+	HttpServerUrl   string `yaml:"http-server-url"`
 }
 
 func (c RuntimeConfig) Level() log.Level {
@@ -39,22 +40,28 @@ func Init(yamlFileName string) *AppConfig {
 	config := AppConfig{}
 
 	if yamlFileName == "" {
+		// Runtime properties
 		flag.BoolVar(&config.Runtime.StartHttpServer, "start-http-server", true,
 			"start http server, defaults to true")
-		flag.BoolVar(&config.Options.TruncLoad, "trunc-load", false,
-			"truncate and load, defaults to false")
+		flag.StringVar(&config.Runtime.HttpServerUrl, "http-server-url", "",
+			"start http server, defaults to true")
 		flag.StringVar(&config.Runtime.LogLevel, "log-level", "INFO",
 			"set logging level, defaults to 'INFO'")
+		flag.StringVar(&config.Runtime.MongoDBName, "mongo-dbname", "",
+			"mongodb database name")
+		flag.StringVar(&config.Runtime.MongoDBUrl, "mongo-url", "",
+			"mongodb url, such as 'mongodb://localhost:27017'")
+
+		// Optional properties
+		flag.BoolVar(&config.Options.TruncLoad, "trunc-load", false,
+			"truncate and load, defaults to false")
 		flag.StringVar(&config.Options.CompanyFile, "data-file", "",
 			"load a csv, txt, zip file or load all files from a directory")
 		flag.StringVar(&config.Options.DataFile, "company-file", "",
 			"load symbol to company names")
 		flag.StringVar(&config.Options.PrintMDFile, "print-markdown", "",
 			"print markdown for the given symbol to output directory")
-		flag.StringVar(&config.Runtime.MongoDBName, "mongo-dbname", "",
-			"mongodb database name")
-		flag.StringVar(&config.Runtime.MongoDBUrl, "mongo-url", "",
-			"mongodb url, such as 'mongodb://localhost:27017'")
+
 		flag.Parse()
 	} else {
 		data, err := ioutil.ReadFile(yamlFileName)

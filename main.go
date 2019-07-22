@@ -70,11 +70,15 @@ func main() {
 	}
 
 	if conf.Runtime.StartHttpServer {
+
+		if conf.Runtime.HttpServerUrl == "" {
+			log.Fatal("Invalid http-server-url")
+		}
 		// Start the profiler
 		go startProfile()
 
 		// Start the main api server
-		start()
+		start(conf)
 	}
 }
 

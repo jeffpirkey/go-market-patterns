@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"market-patterns/config"
 	"market-patterns/model"
 	"market-patterns/model/report"
 	"net/http"
@@ -17,7 +18,7 @@ func startProfile() {
 	log.Fatal(http.ListenAndServe("localhost:6060", nil))
 }
 
-func start() {
+func start(conf *config.AppConfig) {
 
 	router := gin.Default()
 	router.Use(static.Serve("/", static.LocalFile("./ui/build", true)))
@@ -33,7 +34,7 @@ func start() {
 
 	log.Info("market-pattern server listening...")
 
-	log.Fatal(router.Run(":7666"))
+	log.Fatal(router.Run(conf.Runtime.HttpServerUrl))
 }
 
 func handlePredict(ctx *gin.Context) {
