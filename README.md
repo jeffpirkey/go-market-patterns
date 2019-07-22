@@ -48,7 +48,7 @@ For this illustration, we'll use the following IBM periods to calculate a Close 
 |1962-01-09|6.1208|6.2376|6.1208|6.1621 |592806  |
 |1962-01-10|6.1707|6.2041|6.1707|6.1707 |359274  |
 |1962-01-11|6.1875|6.2376|6.1875|6.2376 |386220  |
-|1962-01-12|6.2543|6.2962}6.2543|6.2543 |529933  |
+|1962-01-12|6.2543|6.2962|6.2543|6.2543 |529933  |
 
 The first 4 periods above are used to determine the pattern with the last period used to calculate the next day's result.
 
