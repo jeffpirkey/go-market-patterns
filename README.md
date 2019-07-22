@@ -53,6 +53,7 @@ For this illustration, we'll use the following IBM periods to calculate a Close 
 The first 4 periods above are used to determine the pattern with the last period used to calculate the next day's result.
 
 **Patterns**
+
 | Day 1    | Day 2    | Calculation     | Result |
 |---------:|---------:|----------------:|-------:|
 |1962-01-08|1962-01-09| 6.087 < 6.1621  | Up     |
