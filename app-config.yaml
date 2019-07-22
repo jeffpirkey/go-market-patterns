@@ -3,4 +3,4 @@ runtime:
   mongo-dbname: "marketPatterns"
   log-level: "INFO"
   start-http-server: true
-  http-server-url: ":8080"
+  http-server-url: ":8081"

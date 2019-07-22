@@ -17,3 +17,5 @@ ui/mode_modules/
 
 # ignore the big file
 data/stocks.zip
+
+market-patterns
