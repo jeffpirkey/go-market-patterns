@@ -13,12 +13,10 @@ all: test run
 build:
 	$(GOBUILD) -o $(BINARY_NAME) -v
 
-run:
-	$(GOBUILD) -o $(BINARY_NAME) -v ./...
-	./$(BINARY_NAME)
+run: build
+	./$(BINARY_NAME) -yaml-config=app-config.yaml
 
-trunc-load:
-	$(GOBUILD) -o $(BINARY_NAME) -v ./...
+trunc-load: build
 	./$(BINARY_NAME) -start-http-server=false -data-file=data/stocks.zip -company-file=data/nyse-symb-name.csv
 
 test:

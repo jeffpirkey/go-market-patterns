@@ -93,6 +93,14 @@ func (repo *TickerRepo) FindOne(symbol string) (*model.Ticker, error) {
 	return &ticker, err
 }
 
+func (repo *TickerRepo) FindOneCompanyName(symbol string) (string, error) {
+
+	filter := bson.D{{"symbol", symbol}}
+	var ticker model.Ticker
+	err := repo.c.FindOne(context.TODO(), filter).Decode(&ticker)
+	return ticker.Company, err
+}
+
 func (repo *TickerRepo) FindOneAndUpdateCompanyName(symbol, company string) *model.Ticker {
 	filter := bson.D{{"symbol", symbol}}
 	update := bson.D{{"$set", bson.D{{"company", company}}}}

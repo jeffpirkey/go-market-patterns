@@ -11,7 +11,16 @@ Using the concept of [The Hidden Markov Model](https://en.wikipedia.org/wiki/Hid
 * [react-device-detect](https://github.com/duskload/react-device-detect)
 * [Highcharts](https://www.highcharts.com/docs/getting-started/install-from-npm)
 
-## Program Arguments
+## Running the Application
+
+If you just want to run the application, all you need to do is execute the make command, as follows:
+
+`make run`
+
+And then you can point you browser to the following:
+
+`localhost:8081`
+
 
 ## Makefiles
 

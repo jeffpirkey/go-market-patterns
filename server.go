@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"market-patterns/config"
 	"market-patterns/model"
+	"market-patterns/model/graph"
 	"market-patterns/model/report"
 	"net/http"
 	_ "net/http/pprof"
@@ -108,7 +109,15 @@ func handlePatternDensity(ctx *gin.Context) {
 	if err != nil {
 		_ = ctx.AbortWithError(http.StatusNotFound, err)
 	}
-	ctx.JSON(http.StatusOK, data)
+
+	companyName, err := Repos.TickerRepo.FindOneCompanyName(id)
+	if err != nil {
+		_ = ctx.AbortWithError(http.StatusInternalServerError,
+			errors.Wrapf(err, "problem getting company name for symbol %v", id))
+	}
+	graphData := graph.PatternDensityGraph{Symbol: id, CompanyName: companyName, Graph: data}
+
+	ctx.JSON(http.StatusOK, graphData)
 }
 
 func handleEdgeProbabilities(ctx *gin.Context) {
