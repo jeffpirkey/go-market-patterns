@@ -1,7 +1,7 @@
 package report
 
 type SymbolNames struct {
-	Names *[]string `json:"names"`
+	Names []string `json:"names"`
 }
 
 type TickerNames struct {

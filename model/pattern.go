@@ -15,6 +15,7 @@ const (
 // is Up, Down, or NoChange.
 type Pattern struct {
 	Symbol        string `json:"symbol"`
+	Length        int    `json:"length"`
 	Value         string `json:"value"`
 	UpCount       int    `json:"upCount"`
 	DownCount     int    `json:"downCount"`

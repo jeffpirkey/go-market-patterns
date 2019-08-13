@@ -14,35 +14,56 @@ import (
 	"sort"
 )
 
-type TickerRepo struct {
-	c          *mongo.Collection
-	updateOpt  *options.FindOneAndUpdateOptions
-	replaceOpt *options.FindOneAndReplaceOptions
-}
-
-var (
-	TRUE  = true
-	FALSE = false
+const (
+	idxTickerSymbol = "idxSymbol"
 )
+
+type TickerRepo struct {
+	c *mongo.Collection
+}
 
 func (repo *TickerRepo) Init() {
 
-	repo.updateOpt = options.FindOneAndUpdate().SetUpsert(TRUE).SetReturnDocument(options.After)
-	repo.replaceOpt = options.FindOneAndReplace().SetUpsert(TRUE).SetReturnDocument(options.After)
-
-	idxModel := mongo.IndexModel{}
-	idxModel.Keys = bsonx.Doc{{Key: "symbol", Value: bsonx.Int32(1)}}
-
-	name := "idx_symbol"
-	idxModel.Options = &options.IndexOptions{Background: &TRUE, Name: &name, Unique: &TRUE}
-
-	tmp, err := repo.c.Indexes().CreateOne(context.TODO(), idxModel)
+	created, err := createCollection(repo.c, model.Ticker{})
 	if err != nil {
-		log.Errorf("problem creating %v due to %v", tmp, err)
+		log.WithError(err).Fatal("Unable to continue initializing TickerRepo")
+	}
+
+	if created {
+		idxModel := mongo.IndexModel{}
+		idxModel.Keys = bsonx.Doc{{Key: "symbol", Value: bsonx.Int32(1)}}
+		idxModel.Options = &options.IndexOptions{}
+		idxModel.Options.SetUnique(true)
+		idxModel.Options.SetName(idxTickerSymbol)
+
+		tmp, err := repo.c.Indexes().CreateOne(context.TODO(), idxModel)
+		if err != nil {
+			log.WithError(err).Errorf("problem creating '%v' index", tmp)
+		} else {
+			log.Infof("Created index '%v'", tmp)
+		}
 	}
 }
 
-func (repo *TickerRepo) InsertMany(data []model.Ticker) error {
+func (repo *TickerRepo) CountAll() (int64, error) {
+	return repo.c.CountDocuments(context.TODO(), bson.D{})
+}
+
+// *********************************************************
+//   Insert functions
+// *********************************************************
+
+func (repo *TickerRepo) InsertOne(ticker *model.Ticker) error {
+
+	_, err := repo.c.InsertOne(context.TODO(), ticker)
+	if err != nil {
+		return errors.Wrap(err, "problem inserting ticker")
+	}
+
+	return nil
+}
+
+func (repo *TickerRepo) InsertMany(data []*model.Ticker) error {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
@@ -55,16 +76,26 @@ func (repo *TickerRepo) InsertMany(data []model.Ticker) error {
 	return nil
 }
 
-func (repo *TickerRepo) DeleteAll() error {
-	return repo.c.Drop(context.TODO())
+func (repo *TickerRepo) DropAndCreate() error {
+	err := repo.c.Drop(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	repo.Init()
+	return nil
 }
+
+// *********************************************************
+//   Find functions
+// *********************************************************
 
 func (repo *TickerRepo) FindOneAndReplace(ticker *model.Ticker) *model.Ticker {
 
 	filter := bson.D{{"symbol", ticker.Symbol}}
 
 	var update model.Ticker
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, ticker, repo.replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, ticker, replaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing ticker due to %v", err)
 	}
@@ -77,7 +108,7 @@ func (repo *TickerRepo) FindAndReplace(ticker *model.Ticker) *model.Ticker {
 	filter := bson.D{{"symbol", ticker.Symbol}}
 
 	var update model.Ticker
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, ticker, repo.replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, ticker, replaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing ticker due to %v", err)
 	}
@@ -106,7 +137,7 @@ func (repo *TickerRepo) FindOneAndUpdateCompanyName(symbol, company string) *mod
 	update := bson.D{{"$set", bson.D{{"company", company}}}}
 
 	var result model.Ticker
-	err := repo.c.FindOneAndUpdate(context.TODO(), filter, update, repo.updateOpt).Decode(&result)
+	err := repo.c.FindOneAndUpdate(context.TODO(), filter, update, updateOpt).Decode(&result)
 	if err != nil {
 		log.Warnf("unable to update company of ticker with symbol %v due to %v", symbol, err)
 		return nil
@@ -115,14 +146,14 @@ func (repo *TickerRepo) FindOneAndUpdateCompanyName(symbol, company string) *mod
 	return &result
 }
 
-func (repo *TickerRepo) FindSymbols() *[]string {
+func (repo *TickerRepo) FindSymbols() []string {
 
 	var symbols []string
 
 	ary, err := repo.c.Distinct(context.TODO(), "symbol", bson.D{})
 	if err != nil {
 		log.Warnf("unable to load ticker symbols due to %v", err)
-		return &symbols
+		return symbols
 	}
 
 	if len(ary) > 0 {
@@ -132,7 +163,7 @@ func (repo *TickerRepo) FindSymbols() *[]string {
 		}
 	}
 
-	return &symbols
+	return symbols
 }
 
 func (repo *TickerRepo) FindSymbolsAndCompany() *report.TickerSymbolCompanySlice {

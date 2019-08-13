@@ -7,6 +7,7 @@ GOTOOL=$(GOCMD) tool
 BINARY_NAME=market-patterns
 COVERAGE_OUT=coverage.out
 COVERAGE_HTML=coverage.html
+length?=3
 
 all: test run
 
@@ -14,10 +15,13 @@ build:
 	$(GOBUILD) -o $(BINARY_NAME) -v
 
 run: build
-	./$(BINARY_NAME) -yaml-config=app-config.yaml
+	./$(BINARY_NAME)
 
 trunc-load: build
-	./$(BINARY_NAME) -start-http-server=false -data-file=data/stocks.zip -company-file=data/nyse-symb-name.csv
+	./$(BINARY_NAME) -data-file=data/stocks.zip -company-file=data/nyse-symb-name.csv
+
+trunc-train: build
+	./$(BINARY_NAME) -length=$(length)
 
 test:
 	$(GOTEST)

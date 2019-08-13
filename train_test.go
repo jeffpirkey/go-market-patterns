@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"market-patterns/config"
 	"market-patterns/mal"
-	"market-patterns/model"
 	"strings"
 	"testing"
 )
@@ -19,8 +18,8 @@ func TestTrainTestSuite(t *testing.T) {
 	suite.Run(t, new(TrainTestSuite))
 }
 
-func (suite *TrainTestSuite) SetupTest() {
-	conf := config.Init("app-config-test.yaml")
+func (suite *TrainTestSuite) SetupSuite() {
+	conf := config.Init("runtime-config-test.yaml")
 	Repos = mal.New(conf)
 }
 
@@ -32,38 +31,20 @@ func (suite *TrainTestSuite) TearDownTest() {
 // 	 Test Train functions
 // *********************************************************
 
-func (suite *TrainTestSuite) TestTrain() {
+func (suite *TrainTestSuite) TestTrainAllDaily() {
 
 	r := csv.NewReader(strings.NewReader(testInputData))
 	r.TrimLeadingSpace = true
 
-	dataMap := make(map[model.Ticker][]*model.Period)
-	err := loadData("test", r, testCompanyData, dataMap)
+	err := loadAndTrainData("test", "test compnay", r, 3)
 	assert.NoError(suite.T(), err)
 
-	err = train(3, dataMap)
-	assert.NoError(suite.T(), err)
-	assert.NotEmpty(suite.T(), dataMap)
+	/*
+		assert.Equal(suite.T(), model.NotDefined, periods[0].DailyResult)
+		assert.Equal(suite.T(), model.Up, periods[1].DailyResult)
+		assert.Equal(suite.T(), model.Down, periods[4].DailyResult)
+		assert.Equal(suite.T(), model.Up, periods[13].DailyResult)
+		assert.Equal(suite.T(), model.Up, periods.Last().DailyResult)
 
-	var periods model.PeriodSlice
-	for _, v := range dataMap {
-		periods = v
-	}
-	assert.Equal(suite.T(), model.NotDefined, periods[0].DailyResult)
-	assert.Equal(suite.T(), model.Up, periods[1].DailyResult)
-	assert.Equal(suite.T(), model.Down, periods[4].DailyResult)
-	assert.Equal(suite.T(), model.Up, periods[13].DailyResult)
-	assert.Equal(suite.T(), model.Up, periods.Last().DailyResult)
-}
-
-func (suite *TrainTestSuite) TestTrainBadPeriodSize() {
-
-	r := csv.NewReader(strings.NewReader(testInBadPeriodLength))
-	r.TrimLeadingSpace = true
-	dataMap := make(map[model.Ticker][]*model.Period)
-	err := loadData("test", r, testCompanyData, dataMap)
-	assert.NoError(suite.T(), err)
-
-	err = train(3, dataMap)
-	assert.Error(suite.T(), err)
+	*/
 }

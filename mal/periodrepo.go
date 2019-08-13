@@ -12,11 +12,13 @@ import (
 	"market-patterns/model"
 )
 
+const (
+	idxPeriodSymbolDate = "idxSymbolDate"
+)
+
 type PeriodRepo struct {
-	c          *mongo.Collection
-	updateOpt  *options.FindOneAndUpdateOptions
-	replaceOpt *options.FindOneAndReplaceOptions
-	sortAsc    *bson.D
+	c       *mongo.Collection
+	sortAsc *bson.D
 }
 
 func (repo *PeriodRepo) SortAsc() *bson.D {
@@ -25,43 +27,68 @@ func (repo *PeriodRepo) SortAsc() *bson.D {
 
 func (repo *PeriodRepo) Init() {
 
-	repo.updateOpt = options.FindOneAndUpdate().SetUpsert(TRUE).SetReturnDocument(options.After)
-	repo.replaceOpt = options.FindOneAndReplace().SetUpsert(TRUE).SetReturnDocument(options.After)
-	idxModel := mongo.IndexModel{}
-	idxModel.Keys = bsonx.Doc{{Key: "symbol", Value: bsonx.Int32(1)}, {Key: "date", Value: bsonx.Int32(1)}}
-	name := "idx_symbol_date"
-	idxModel.Options = &options.IndexOptions{Background: &TRUE, Name: &name, Unique: &TRUE}
-	tmp, err := repo.c.Indexes().CreateOne(context.TODO(), idxModel)
+	repo.sortAsc = &bson.D{{"symbol", 1}}
+
+	created, err := createCollection(repo.c, model.Period{})
 	if err != nil {
-		log.Errorf("problem creating %v due to %v", tmp, err)
+		log.WithError(err).Fatal("Unable to continue initializing PeriodRepo")
 	}
 
-	repo.sortAsc = &bson.D{{"symbol", 1}}
+	if created {
+		idxModel := mongo.IndexModel{}
+		idxModel.Keys = bsonx.Doc{{Key: "symbol", Value: bsonx.Int32(1)}, {Key: "date", Value: bsonx.Int32(1)}}
+		idxModel.Options = &options.IndexOptions{}
+		idxModel.Options.SetUnique(true)
+		idxModel.Options.SetName(idxPeriodSymbolDate)
+
+		tmp, err := repo.c.Indexes().CreateOne(context.TODO(), idxModel)
+		if err != nil {
+			log.WithError(err).Errorf("problem creating '%v' index", tmp)
+		} else {
+			log.Infof("Created index '%v'", tmp)
+		}
+	}
 }
 
-func (repo *PeriodRepo) InsertMany(data []*model.Period) error {
+// *********************************************************
+//   Insert functions
+// *********************************************************
+
+func (repo *PeriodRepo) InsertMany(data []*model.Period) (*mongo.InsertManyResult, error) {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
 		dataAry[i] = v
 	}
-
-	_, err := repo.c.InsertMany(context.TODO(), dataAry)
+	result, err := repo.c.InsertMany(context.TODO(), dataAry)
 	if err != nil {
-		return errors.Wrap(err, "problem inserting many periods")
+		return result, errors.Wrap(err, "problem inserting many periods")
 	}
+	return result, nil
+}
+
+// *********************************************************
+//   Delete functions
+// *********************************************************
+
+func (repo *PeriodRepo) DropAndCreate() error {
+	err := repo.c.Drop(context.TODO())
+	if err != nil {
+		return err
+	}
+	repo.Init()
 	return nil
 }
 
-func (repo *PeriodRepo) DeleteAll() error {
-	return repo.c.Drop(context.TODO())
-}
+// *********************************************************
+//   Find functions
+// *********************************************************
 
 func (repo *PeriodRepo) FindOneAndReplace(data *model.Period) *model.Period {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	var update model.Period
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, repo.replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, replaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
 	}
@@ -72,7 +99,7 @@ func (repo *PeriodRepo) FindAndReplace(data *model.Period) *model.Period {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	var update model.Period
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, repo.replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, replaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
 	}
@@ -84,7 +111,7 @@ func (repo *PeriodRepo) FindOneAndUpdateDailyResult(data *model.Period) (*model.
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	update := bson.D{{"$set", bson.D{{"dailyResult", data.DailyResult}}}}
 	var doc model.Period
-	err := repo.c.FindOneAndUpdate(context.TODO(), filter, data, repo.updateOpt).Decode(&update)
+	err := repo.c.FindOneAndUpdate(context.TODO(), filter, data, updateOpt).Decode(&update)
 	if err != nil {
 		return &doc, errors.Wrap(err, "problem updating period daily result")
 	}

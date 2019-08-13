@@ -12,25 +12,41 @@ import (
 	"market-patterns/model"
 )
 
+const (
+	idxSeriesSymbolLength = "idxSymbolLength"
+)
+
 type SeriesRepo struct {
-	c          *mongo.Collection
-	updateOpt  *options.FindOneAndUpdateOptions
-	replaceOpt *options.FindOneAndReplaceOptions
+	c *mongo.Collection
 }
 
 func (repo *SeriesRepo) Init() {
 
-	repo.updateOpt = options.FindOneAndUpdate().SetUpsert(TRUE).SetReturnDocument(options.After)
-	repo.replaceOpt = options.FindOneAndReplace().SetUpsert(TRUE).SetReturnDocument(options.After)
-	idxModel := mongo.IndexModel{}
-	idxModel.Keys = bsonx.Doc{{Key: "symbol", Value: bsonx.Int32(1)}, {Key: "name", Value: bsonx.Int32(1)}}
-	name := "idx_symbol_name"
-	idxModel.Options = &options.IndexOptions{Background: &TRUE, Name: &name, Unique: &TRUE}
-	tmp, err := repo.c.Indexes().CreateOne(context.TODO(), idxModel)
+	created, err := createCollection(repo.c, model.Series{})
 	if err != nil {
-		log.Errorf("problem creating %v due to %v", tmp, err)
+		log.WithError(err).Fatal("Unable to continue initializing SeriesRepo")
+	}
+
+	if created {
+		idxModel := mongo.IndexModel{}
+		idxModel.Keys = bsonx.Doc{{Key: "symbol", Value: bsonx.Int32(1)},
+			{Key: "length", Value: bsonx.Int32(1)}}
+		idxModel.Options = &options.IndexOptions{}
+		idxModel.Options.SetUnique(true)
+		idxModel.Options.SetName(idxSeriesSymbolLength)
+
+		tmp, err := repo.c.Indexes().CreateOne(context.TODO(), idxModel)
+		if err != nil {
+			log.WithError(err).Errorf("problem creating '%v' index", tmp)
+		} else {
+			log.Infof("Created index '%v'", tmp)
+		}
 	}
 }
+
+// *********************************************************
+//   Find functions
+// *********************************************************
 
 func (repo *SeriesRepo) FindBySymbol(symbol string) ([]model.Series, error) {
 	filter := bson.D{{"symbol", symbol}}
@@ -54,6 +70,10 @@ func (repo *SeriesRepo) FindBySymbol(symbol string) ([]model.Series, error) {
 	return findData, results
 }
 
+// *********************************************************
+//   Insert functions
+// *********************************************************
+
 func (repo *SeriesRepo) InsertOne(data *model.Series) error {
 
 	_, err := repo.c.InsertOne(context.TODO(), data)
@@ -62,6 +82,10 @@ func (repo *SeriesRepo) InsertOne(data *model.Series) error {
 	}
 	return nil
 }
+
+// *********************************************************
+//   Delete functions
+// *********************************************************
 
 func (repo *SeriesRepo) DeleteOne(data *model.Series) error {
 
@@ -73,6 +97,24 @@ func (repo *SeriesRepo) DeleteOne(data *model.Series) error {
 	return nil
 }
 
-func (repo *SeriesRepo) DeleteAll() error {
-	return repo.c.Drop(context.TODO())
+func (repo *SeriesRepo) DeleteByLength(length int) error {
+
+	filter := bson.D{{"length", length}}
+	r, err := repo.c.DeleteMany(context.TODO(), filter)
+	if err != nil {
+		return errors.Wrapf(err, "problem deleting series with length %v", length)
+	}
+
+	log.Infof("Deleted %v docs with length %v from series repo", r.DeletedCount, length)
+	return nil
+}
+
+func (repo *SeriesRepo) DropAndCreate() error {
+	err := repo.c.Drop(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	repo.Init()
+	return nil
 }

@@ -17,8 +17,8 @@ func TestPatternRepoTestSuite(t *testing.T) {
 	suite.Run(t, new(PatternRepoTestSuite))
 }
 
-func (suite *PatternRepoTestSuite) SetupTest() {
-	conf := config.Init("app-config-test.yaml")
+func (suite *PatternRepoTestSuite) SetupSuite() {
+	conf := config.Init("runtime-config-test.yaml")
 	Repos = mal.New(conf)
 }
 
@@ -28,11 +28,9 @@ func (suite *PatternRepoTestSuite) TearDownTest() {
 
 func (suite *PatternRepoTestSuite) TestHighestUp() {
 
-	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile)
+	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, 3)
 	assert.NoError(suite.T(), err)
-
 	pattern, err := Repos.PatternRepo.FindHighestUpProbability(model.PatternDensityLow)
 	assert.NoError(suite.T(), err)
-
 	assert.NotEmpty(suite.T(), pattern)
 }

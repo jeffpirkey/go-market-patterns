@@ -12,23 +12,36 @@ import (
 	"market-patterns/model"
 )
 
+const (
+	idxPatternSymbolValueLength = "idxSymbolValueLength"
+)
+
 type PatternRepo struct {
-	c          *mongo.Collection
-	updateOpt  *options.FindOneAndUpdateOptions
-	replaceOpt *options.FindOneAndReplaceOptions
+	c *mongo.Collection
 }
 
 func (repo *PatternRepo) Init() {
 
-	repo.updateOpt = options.FindOneAndUpdate().SetUpsert(TRUE).SetReturnDocument(options.After)
-	repo.replaceOpt = options.FindOneAndReplace().SetUpsert(TRUE).SetReturnDocument(options.After)
-	idxModel := mongo.IndexModel{}
-	idxModel.Keys = bsonx.Doc{{Key: "symbol", Value: bsonx.Int32(1)}, {Key: "value", Value: bsonx.Int32(1)}}
-	name := "idx_symbol_date"
-	idxModel.Options = &options.IndexOptions{Background: &TRUE, Name: &name, Unique: &TRUE}
-	tmp, err := repo.c.Indexes().CreateOne(context.TODO(), idxModel)
+	created, err := createCollection(repo.c, model.Pattern{})
 	if err != nil {
-		log.Errorf("problem creating %v due to %v", tmp, err)
+		log.WithError(err).Fatal("Unable to continue initializing PatternRepo")
+	}
+
+	if created {
+		idxModel := mongo.IndexModel{}
+		idxModel.Keys = bsonx.Doc{{Key: "symbol", Value: bsonx.Int32(1)},
+			{Key: "value", Value: bsonx.Int32(1)},
+			{Key: "length", Value: bsonx.Int32(1)}}
+		idxModel.Options = &options.IndexOptions{}
+		idxModel.Options.SetUnique(true)
+		idxModel.Options.SetName(idxPatternSymbolValueLength)
+
+		tmp, err := repo.c.Indexes().CreateOne(context.TODO(), idxModel)
+		if err != nil {
+			log.WithError(err).Errorf("problem creating '%v' index", tmp)
+		} else {
+			log.Infof("Created index '%v'", tmp)
+		}
 	}
 }
 
@@ -36,26 +49,43 @@ func (repo *PatternRepo) Init() {
 // Insert functions
 // *********************************************************
 
-func (repo *PatternRepo) InsertMany(data []*model.Pattern) error {
+func (repo *PatternRepo) InsertMany(data []*model.Pattern) (*mongo.InsertManyResult, error) {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
 		dataAry[i] = v
 	}
-
-	_, err := repo.c.InsertMany(context.TODO(), dataAry)
+	results, err := repo.c.InsertMany(context.TODO(), dataAry)
 	if err != nil {
-		return errors.Wrap(err, "problem inserting many patterns")
+		return results, errors.Wrap(err, "problem inserting many patterns")
 	}
-	return nil
+	return results, nil
 }
 
 // *********************************************************
 // Delete functions
 // *********************************************************
 
-func (repo *PatternRepo) DeleteAll() error {
-	return repo.c.Drop(context.TODO())
+func (repo *PatternRepo) DeleteByLength(length int) error {
+
+	filter := bson.D{{"length", length}}
+	r, err := repo.c.DeleteMany(context.TODO(), filter)
+	if err != nil {
+		return errors.Wrapf(err, "problem deleting patterns with series length %v", length)
+	}
+
+	log.Infof("Deleted %v docs with series length %v from patterns repo", r.DeletedCount, length)
+	return nil
+}
+
+func (repo *PatternRepo) DropAndCreate() error {
+	err := repo.c.Drop(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	repo.Init()
+	return nil
 }
 
 // *********************************************************
@@ -66,7 +96,7 @@ func (repo *PatternRepo) FindOneAndReplace(pattern *model.Pattern) *model.Patter
 
 	filter := bson.D{{"symbol", pattern.Symbol}, {"value", pattern.Value}}
 	var update model.Pattern
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, pattern, repo.replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, pattern, replaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
 	}
@@ -77,7 +107,7 @@ func (repo *PatternRepo) FindAndReplace(pattern *model.Pattern) *model.Pattern {
 
 	filter := bson.D{{"symbol", pattern.Symbol}, {"value", pattern.Value}}
 	var update model.Pattern
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, pattern, repo.replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, pattern, replaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
 	}
