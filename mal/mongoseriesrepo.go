@@ -16,11 +16,11 @@ const (
 	idxSeriesSymbolLength = "idxSymbolLength"
 )
 
-type SeriesRepo struct {
+type MongoSeriesRepo struct {
 	c *mongo.Collection
 }
 
-func (repo *SeriesRepo) Init() {
+func (repo MongoSeriesRepo) Init() {
 
 	created, err := createCollection(repo.c, model.Series{})
 	if err != nil {
@@ -48,7 +48,7 @@ func (repo *SeriesRepo) Init() {
 //   Find functions
 // *********************************************************
 
-func (repo *SeriesRepo) FindBySymbol(symbol string) ([]model.Series, error) {
+func (repo MongoSeriesRepo) FindBySymbol(symbol string) ([]model.Series, error) {
 	filter := bson.D{{"symbol", symbol}}
 	var findData []model.Series
 	cur, err := repo.c.Find(context.TODO(), filter)
@@ -74,7 +74,7 @@ func (repo *SeriesRepo) FindBySymbol(symbol string) ([]model.Series, error) {
 //   Insert functions
 // *********************************************************
 
-func (repo *SeriesRepo) InsertOne(data *model.Series) error {
+func (repo MongoSeriesRepo) InsertOne(data *model.Series) error {
 
 	_, err := repo.c.InsertOne(context.TODO(), data)
 	if err != nil {
@@ -87,7 +87,7 @@ func (repo *SeriesRepo) InsertOne(data *model.Series) error {
 //   Delete functions
 // *********************************************************
 
-func (repo *SeriesRepo) DeleteOne(data *model.Series) error {
+func (repo MongoSeriesRepo) DeleteOne(data *model.Series) error {
 
 	filter := bson.D{{"name", data.Name}}
 	_, err := repo.c.DeleteOne(context.TODO(), filter)
@@ -97,7 +97,7 @@ func (repo *SeriesRepo) DeleteOne(data *model.Series) error {
 	return nil
 }
 
-func (repo *SeriesRepo) DeleteByLength(length int) error {
+func (repo MongoSeriesRepo) DeleteByLength(length int) error {
 
 	filter := bson.D{{"length", length}}
 	r, err := repo.c.DeleteMany(context.TODO(), filter)
@@ -109,7 +109,7 @@ func (repo *SeriesRepo) DeleteByLength(length int) error {
 	return nil
 }
 
-func (repo *SeriesRepo) DropAndCreate() error {
+func (repo MongoSeriesRepo) DropAndCreate() error {
 	err := repo.c.Drop(context.TODO())
 	if err != nil {
 		return err

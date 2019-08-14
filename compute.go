@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"market-patterns/mal"
 	"market-patterns/model"
 	"strconv"
 	"sync"
@@ -34,7 +35,7 @@ func recomputeAllSeries(computeLength int) error {
 	semaphore := make(chan struct{}, 100)
 	tickers := Repos.TickerRepo.FindSymbols()
 	for _, symbol := range tickers {
-		periods, err := Repos.PeriodRepo.FindBySymbol(symbol, Repos.PeriodRepo.SortAsc())
+		periods, err := Repos.PeriodRepo.FindBySymbol(symbol, mal.SortAsc)
 		if err != nil {
 			trainErrors = multierror.Append(trainErrors, err)
 			continue
@@ -56,7 +57,7 @@ func recomputeAllSeries(computeLength int) error {
 	return trainErrors
 }
 
-func computeAllSeries(seriesLength int, dataMap model.LoadMap) error {
+func computeAllSeries(seriesLength int, dataMap map[*model.Ticker][]*model.Period) error {
 
 	var trainErrors error
 

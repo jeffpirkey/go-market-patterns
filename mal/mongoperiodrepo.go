@@ -16,18 +16,16 @@ const (
 	idxPeriodSymbolDate = "idxSymbolDate"
 )
 
-type PeriodRepo struct {
-	c       *mongo.Collection
-	sortAsc *bson.D
+type MongoPeriodRepo struct {
+	c *mongo.Collection
 }
 
-func (repo *PeriodRepo) SortAsc() *bson.D {
-	return repo.sortAsc
-}
+var (
+	sortSymbolAsc = bson.D{{"symbol", 1}}
+	sortSymbolDsc = bson.D{{"symbol", 0}}
+)
 
-func (repo *PeriodRepo) Init() {
-
-	repo.sortAsc = &bson.D{{"symbol", 1}}
+func (repo MongoPeriodRepo) Init() {
 
 	created, err := createCollection(repo.c, model.Period{})
 	if err != nil {
@@ -54,7 +52,7 @@ func (repo *PeriodRepo) Init() {
 //   Insert functions
 // *********************************************************
 
-func (repo *PeriodRepo) InsertMany(data []*model.Period) (*mongo.InsertManyResult, error) {
+func (repo MongoPeriodRepo) InsertMany(data []*model.Period) (*mongo.InsertManyResult, error) {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
@@ -71,7 +69,7 @@ func (repo *PeriodRepo) InsertMany(data []*model.Period) (*mongo.InsertManyResul
 //   Delete functions
 // *********************************************************
 
-func (repo *PeriodRepo) DropAndCreate() error {
+func (repo MongoPeriodRepo) DropAndCreate() error {
 	err := repo.c.Drop(context.TODO())
 	if err != nil {
 		return err
@@ -84,7 +82,7 @@ func (repo *PeriodRepo) DropAndCreate() error {
 //   Find functions
 // *********************************************************
 
-func (repo *PeriodRepo) FindOneAndReplace(data *model.Period) *model.Period {
+func (repo MongoPeriodRepo) FindOneAndReplace(data *model.Period) *model.Period {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	var update model.Period
@@ -95,7 +93,7 @@ func (repo *PeriodRepo) FindOneAndReplace(data *model.Period) *model.Period {
 	return &update
 }
 
-func (repo *PeriodRepo) FindAndReplace(data *model.Period) *model.Period {
+func (repo MongoPeriodRepo) FindAndReplace(data *model.Period) *model.Period {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	var update model.Period
@@ -106,7 +104,7 @@ func (repo *PeriodRepo) FindAndReplace(data *model.Period) *model.Period {
 	return &update
 }
 
-func (repo *PeriodRepo) FindOneAndUpdateDailyResult(data *model.Period) (*model.Period, error) {
+func (repo MongoPeriodRepo) FindOneAndUpdateDailyResult(data *model.Period) (*model.Period, error) {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	update := bson.D{{"$set", bson.D{{"dailyResult", data.DailyResult}}}}
@@ -118,12 +116,15 @@ func (repo *PeriodRepo) FindOneAndUpdateDailyResult(data *model.Period) (*model.
 	return &doc, nil
 }
 
-func (repo *PeriodRepo) FindBySymbol(symbol string, sort *bson.D) (model.PeriodSlice, error) {
+func (repo MongoPeriodRepo) FindBySymbol(symbol string, sort int) (model.PeriodSlice, error) {
 
 	opts := &options.FindOptions{}
-	if sort != nil {
-		opts.Sort = sort
+	if sort == 1 {
+		opts.Sort = sortSymbolAsc
+	} else {
+		opts.Sort = sortSymbolDsc
 	}
+
 	filter := bson.D{{"symbol", symbol}}
 	var findData model.PeriodSlice
 	cur, err := repo.c.Find(context.TODO(), filter, opts)
@@ -145,7 +146,7 @@ func (repo *PeriodRepo) FindBySymbol(symbol string, sort *bson.D) (model.PeriodS
 	return findData, results
 }
 
-func (repo *PeriodRepo) FindOneBySymbolAndValue(symbol, value string) (*model.Period, error) {
+func (repo MongoPeriodRepo) FindOneBySymbolAndValue(symbol, value string) (*model.Period, error) {
 
 	filter := bson.D{{"symbol", symbol}, {"value", value}}
 

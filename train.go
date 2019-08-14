@@ -11,7 +11,7 @@ import (
 
 // Trains the day-to-day results for the given tickers and period arrays.  It is assumed that there are
 // at least 2 periods for each ticker.
-func trainAllDaily(dataMap model.LoadMap) {
+func trainAllDaily(dataMap map[*model.Ticker][]*model.Period) {
 
 	wg := sync.WaitGroup{}
 	semaphore := make(chan struct{}, 100)

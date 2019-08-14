@@ -18,11 +18,11 @@ const (
 	idxTickerSymbol = "idxSymbol"
 )
 
-type TickerRepo struct {
+type MongoTickerRepo struct {
 	c *mongo.Collection
 }
 
-func (repo *TickerRepo) Init() {
+func (repo MongoTickerRepo) Init() {
 
 	created, err := createCollection(repo.c, model.Ticker{})
 	if err != nil {
@@ -45,7 +45,7 @@ func (repo *TickerRepo) Init() {
 	}
 }
 
-func (repo *TickerRepo) CountAll() (int64, error) {
+func (repo MongoTickerRepo) CountAll() (int64, error) {
 	return repo.c.CountDocuments(context.TODO(), bson.D{})
 }
 
@@ -53,7 +53,7 @@ func (repo *TickerRepo) CountAll() (int64, error) {
 //   Insert functions
 // *********************************************************
 
-func (repo *TickerRepo) InsertOne(ticker *model.Ticker) error {
+func (repo MongoTickerRepo) InsertOne(ticker *model.Ticker) error {
 
 	_, err := repo.c.InsertOne(context.TODO(), ticker)
 	if err != nil {
@@ -63,7 +63,7 @@ func (repo *TickerRepo) InsertOne(ticker *model.Ticker) error {
 	return nil
 }
 
-func (repo *TickerRepo) InsertMany(data []*model.Ticker) error {
+func (repo MongoTickerRepo) InsertMany(data []*model.Ticker) error {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
@@ -76,7 +76,7 @@ func (repo *TickerRepo) InsertMany(data []*model.Ticker) error {
 	return nil
 }
 
-func (repo *TickerRepo) DropAndCreate() error {
+func (repo MongoTickerRepo) DropAndCreate() error {
 	err := repo.c.Drop(context.TODO())
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (repo *TickerRepo) DropAndCreate() error {
 //   Find functions
 // *********************************************************
 
-func (repo *TickerRepo) FindOneAndReplace(ticker *model.Ticker) *model.Ticker {
+func (repo MongoTickerRepo) FindOneAndReplace(ticker *model.Ticker) *model.Ticker {
 
 	filter := bson.D{{"symbol", ticker.Symbol}}
 
@@ -103,7 +103,7 @@ func (repo *TickerRepo) FindOneAndReplace(ticker *model.Ticker) *model.Ticker {
 	return &update
 }
 
-func (repo *TickerRepo) FindAndReplace(ticker *model.Ticker) *model.Ticker {
+func (repo MongoTickerRepo) FindAndReplace(ticker *model.Ticker) *model.Ticker {
 
 	filter := bson.D{{"symbol", ticker.Symbol}}
 
@@ -116,7 +116,7 @@ func (repo *TickerRepo) FindAndReplace(ticker *model.Ticker) *model.Ticker {
 	return &update
 }
 
-func (repo *TickerRepo) FindOne(symbol string) (*model.Ticker, error) {
+func (repo MongoTickerRepo) FindOne(symbol string) (*model.Ticker, error) {
 
 	filter := bson.D{{"symbol", symbol}}
 	var ticker model.Ticker
@@ -124,7 +124,7 @@ func (repo *TickerRepo) FindOne(symbol string) (*model.Ticker, error) {
 	return &ticker, err
 }
 
-func (repo *TickerRepo) FindOneCompanyName(symbol string) (string, error) {
+func (repo MongoTickerRepo) FindOneCompanyName(symbol string) (string, error) {
 
 	filter := bson.D{{"symbol", symbol}}
 	var ticker model.Ticker
@@ -132,7 +132,7 @@ func (repo *TickerRepo) FindOneCompanyName(symbol string) (string, error) {
 	return ticker.Company, err
 }
 
-func (repo *TickerRepo) FindOneAndUpdateCompanyName(symbol, company string) *model.Ticker {
+func (repo MongoTickerRepo) FindOneAndUpdateCompanyName(symbol, company string) *model.Ticker {
 	filter := bson.D{{"symbol", symbol}}
 	update := bson.D{{"$set", bson.D{{"company", company}}}}
 
@@ -146,7 +146,7 @@ func (repo *TickerRepo) FindOneAndUpdateCompanyName(symbol, company string) *mod
 	return &result
 }
 
-func (repo *TickerRepo) FindSymbols() []string {
+func (repo MongoTickerRepo) FindSymbols() []string {
 
 	var symbols []string
 
@@ -166,7 +166,7 @@ func (repo *TickerRepo) FindSymbols() []string {
 	return symbols
 }
 
-func (repo *TickerRepo) FindSymbolsAndCompany() *report.TickerSymbolCompanySlice {
+func (repo MongoTickerRepo) FindSymbolsAndCompany() *report.TickerSymbolCompanySlice {
 
 	var symbols report.TickerSymbolCompanySlice
 
