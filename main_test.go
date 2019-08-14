@@ -16,8 +16,8 @@ func TestMainTestSuite(t *testing.T) {
 	suite.Run(t, new(MainTestSuite))
 }
 
-func (suite *MainTestSuite) SetupTest() {
-	conf := config.Init("app-config-test.yaml")
+func (suite *MainTestSuite) SetupSuite() {
+	conf := config.Init("runtime-config-test.yaml")
 	Repos = mal.New(conf)
 }
 
@@ -27,7 +27,7 @@ func (suite *MainTestSuite) TearDownTest() {
 
 func (suite *MainTestSuite) TestTruncLoadFile() {
 
-	err := truncAndLoad(testIbmFile, testCompanyFile)
+	err := truncAndLoad(testIbmFile, testCompanyFile, 3)
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"
@@ -50,7 +50,7 @@ func (suite *MainTestSuite) TestTruncLoadFile() {
 
 func (suite *LoadCsvTestSuite) TestTruncLoadDir() {
 
-	err := truncAndLoad("data/test/", testCompanyFile)
+	err := truncAndLoad("data/test/", testCompanyFile, 3)
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"
@@ -73,7 +73,7 @@ func (suite *LoadCsvTestSuite) TestTruncLoadDir() {
 
 func (suite *LoadCsvTestSuite) TestTruncLoadZipArchive() {
 
-	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile)
+	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, 3)
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"

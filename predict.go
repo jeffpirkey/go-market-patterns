@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"market-patterns/mal"
 	"market-patterns/model"
 	"market-patterns/model/report"
 	"strings"
@@ -14,7 +15,7 @@ func predict(symbol string) (report.Prediction, error) {
 	startTime := time.Now()
 
 	var prediction report.Prediction
-	slice, err := Repos.PeriodRepo.FindBySymbol(symbol, Repos.PeriodRepo.SortAsc())
+	slice, err := Repos.PeriodRepo.FindBySymbol(symbol, mal.SortAsc)
 	if err != nil {
 		return prediction, err
 	}

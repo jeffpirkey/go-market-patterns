@@ -6,13 +6,13 @@ import (
 )
 
 type GraphController struct {
-	periodRepo  *PeriodRepo
-	patternRepo *PatternRepo
+	periodRepo  PeriodRepo
+	patternRepo PatternRepo
 }
 
 func (c *GraphController) FindPeriodCloseSeries(symbol string) ([]interface{}, error) {
 
-	slice, err := c.periodRepo.FindBySymbol(symbol, c.periodRepo.SortAsc())
+	slice, err := c.periodRepo.FindBySymbol(symbol, SortAsc)
 	if err != nil {
 		return nil, err
 	}

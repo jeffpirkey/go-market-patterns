@@ -1,28 +1,29 @@
 package main
 
 import (
+	"errors"
 	"github.com/hashicorp/go-multierror"
-	"github.com/namsral/flag"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"market-patterns/config"
 	"market-patterns/mal"
-	"market-patterns/model"
 	"market-patterns/tools"
 	"os"
 	"strings"
 	"time"
 )
 
-var Repos *mal.Repos
+var (
+	Repos *mal.Repos
+)
+
+const (
+	appConfig = "runtime-config.yaml"
+)
 
 func main() {
 
-	var yamlConfig string
-	flag.StringVar(&yamlConfig, "yaml-config", "", "YAML file containing configuration settings")
-	flag.Parse()
+	conf := config.Init(appConfig)
 
-	conf := config.Init(yamlConfig)
 	Repos = mal.New(conf)
 
 	if conf.Options.PrintMDFile != "" {
@@ -52,13 +53,29 @@ func main() {
 	}
 
 	if conf.Options.TruncLoad {
-		err := truncAndLoad(conf.Options.DataFile, conf.Options.CompanyFile)
+		log.Info("Started trunc and load")
+		startTime := time.Now()
+		err := truncAndLoad(conf.Options.DataFile, conf.Options.CompanyFile, conf.Options.Compute)
 		if err != nil {
-			log.Error(errors.Wrap(err, "problem truncating and loading"))
+			log.Error(err)
+		}
+		log.Infof("Completed trunc and load took %0.2f minutes",
+			time.Since(startTime).Minutes())
+	} else if conf.Options.Compute > 1 {
+		log.Infof("Started computing all periods with length %v...", conf.Options.Compute)
+		startTime := time.Now()
+		err := truncAndComputeAllSeries(conf.Options.Compute)
+		if err != nil {
+			log.WithError(err).Errorf(
+				"Completed training all periods with length %v with errors took %0.2f minutes",
+				conf.Options.Compute, time.Since(startTime).Minutes())
+		} else {
+			log.Infof("Completed training all periods with length %v took %0.2f minutes",
+				conf.Options.Compute, time.Since(startTime).Minutes())
 		}
 	}
 
-	if conf.Runtime.StartHttpServer {
+	if conf.Options.StartHttpServer {
 
 		if conf.Runtime.HttpServerUrl == "" {
 			log.Fatal("Invalid http-server-url")
@@ -71,7 +88,9 @@ func main() {
 	}
 }
 
-func truncAndLoad(dataFile, companyFile string) error {
+// This function deletes all the repo data, reloads from the given data and company files.
+// After loading, the one-day train is executed against the periods.
+func truncAndLoad(dataFile, companyFile string, computeLength int) error {
 
 	if dataFile == "" {
 		log.Fatal("data-file must be specified for a trunc and load.")
@@ -81,52 +100,30 @@ func truncAndLoad(dataFile, companyFile string) error {
 		log.Fatal("company-file must be specified for a trunc and load.")
 	}
 
+	log.Info("Dropping and recreating repos...")
 	startTime := time.Now()
-
-	log.Info("Deleting repos...")
 	var dropErrors error
-	err := Repos.PatternRepo.DeleteAll()
-	if err != nil {
+	if err := Repos.PatternRepo.DropAndCreate(); err != nil {
 		dropErrors = multierror.Append(dropErrors, err)
 	}
-	err = Repos.PeriodRepo.DeleteAll()
-	if err != nil {
+	if err := Repos.PeriodRepo.DropAndCreate(); err != nil {
 		dropErrors = multierror.Append(dropErrors, err)
 	}
-	err = Repos.SeriesRepo.DeleteAll()
-	if err != nil {
+	if err := Repos.SeriesRepo.DropAndCreate(); err != nil {
 		dropErrors = multierror.Append(dropErrors, err)
 	}
-	err = Repos.TickerRepo.DeleteAll()
-	if err != nil {
+	if err := Repos.TickerRepo.DropAndCreate(); err != nil {
 		dropErrors = multierror.Append(dropErrors, err)
 	}
+
 	if dropErrors != nil {
-		return errors.Wrap(dropErrors, "unable to delete all repos")
-	} else {
-		log.Info("Success deleting repos.")
+		log.WithError(dropErrors).Errorf("Completed recreating repos with errors took %0.2f minutes",
+			time.Since(startTime).Minutes())
+		return errors.New("unable to continue trunc and load due to repo recreate issues")
 	}
 
-	var loadErrors error
-	dataMap := make(map[model.Ticker][]*model.Period)
-	err = load(dataFile, companyFile, dataMap)
-	if err != nil {
-		loadErrors = multierror.Append(loadErrors, err)
-	}
+	log.Infof("Completed recreating repos took %0.2f minutes",
+		time.Since(startTime).Minutes())
 
-	err = train(3, dataMap)
-	if err != nil {
-		loadErrors = multierror.Append(loadErrors, err)
-	}
-
-	if loadErrors != nil {
-		log.Infof("Completed trunc and load of %v with errors took %0.2f minutes",
-			dataFile, time.Since(startTime).Minutes())
-		log.Error(loadErrors)
-	} else {
-		log.Infof("Successful trunc and load of %v took %0.2f minutes",
-			dataFile, time.Since(startTime).Minutes())
-	}
-
-	return nil
+	return load(dataFile, companyFile, computeLength)
 }

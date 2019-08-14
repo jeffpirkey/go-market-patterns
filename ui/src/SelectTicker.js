@@ -36,7 +36,14 @@ class SelectTicker extends React.Component {
             tickers = this.state.tickers;
         }
 
-        this.setState({selectedSymbol: event.target.value, tickers: tickers});
+        let companyName = tickers.filter(ticker => ticker.symbol === event.target.value)[0].company;
+        this.setState(
+            {
+                selectedSymbol: event.target.value,
+                selectedCompany: companyName,
+                tickers: tickers
+            }
+        );
     }
 
     render() {

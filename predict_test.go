@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"market-patterns/config"
 	"market-patterns/mal"
-	"market-patterns/model"
 	"strings"
 	"testing"
 )
@@ -19,8 +18,8 @@ func TestPredictTestSuite(t *testing.T) {
 	suite.Run(t, new(PredictTestSuite))
 }
 
-func (suite *PredictTestSuite) SetupTest() {
-	conf := config.Init("app-config-test.yaml")
+func (suite *PredictTestSuite) SetupSuite() {
+	conf := config.Init("runtime-config-test.yaml")
 	Repos = mal.New(conf)
 }
 
@@ -32,16 +31,10 @@ func (suite *PredictTestSuite) TestPredict() {
 
 	r := csv.NewReader(strings.NewReader(testInputData))
 	r.TrimLeadingSpace = true
-	dataMap := make(map[model.Ticker][]*model.Period)
-	err := loadData("test", r, testCompanyData, dataMap)
+	err := loadAndTrainData("test", "test company", r, 3)
 	assert.NoError(suite.T(), err)
-
-	err = train(3, dataMap)
-	assert.NoError(suite.T(), err)
-
 	prediction, err := predict("test")
 	assert.NoError(suite.T(), err)
-
 	assert.Equal(suite.T(), "test", prediction.TickerSymbol)
 	assert.Equal(suite.T(), 0.5, prediction.Series[0].ProbabilityUp)
 	assert.Equal(suite.T(), 0.5, prediction.Series[0].ProbabilityDown)

@@ -3,63 +3,120 @@ package main
 import (
 	"archive/zip"
 	"bufio"
+	"context"
 	"encoding/csv"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/semaphore"
+	"io"
 	"io/ioutil"
 	"market-patterns/model"
 	"market-patterns/utils"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+type CsvField int
 
 const (
 	timeFormat = "2006-01-02"
 )
 
-func load(url, companyFile string, dataMap map[model.Ticker][]*model.Period) error {
+const (
+	csvDate CsvField = iota
+	csvOpen
+	csvHigh
+	csvLow
+	csvClose
+	csvVolume
+)
 
+type CsvRow struct {
+	Date   time.Time
+	High   float64
+	Low    float64
+	Open   float64
+	Close  float64
+	Volume int
+}
+
+var (
+	loadRegistry = metrics.NewRegistry()
+	loadMutex    = &sync.Mutex{}
+)
+
+// load attempts to read, persist, and optionally pattern compute
+// ticker data from the given url.
+// The companyFile parameter is used to correlate ticker symbol to
+// an actual company name.
+// If a computeLength of greater than 1 is specified, then the
+// compute patterns are run for that length.
+// If an error is returned, this indicates that some portion
+// of the process failed, but maybe not all.
+func load(url, companyFile string, computeLength int) error {
+
+	// Allow only one load to be happening at a time
+	loadMutex.Lock()
+	defer loadMutex.Unlock()
+
+	loadRegistry.UnregisterAll()
+
+	startTime := time.Now()
+	log.Infof("Started load of company data from %v", companyFile)
 	companyData, err := loadCompanies(companyFile)
 	if err != nil {
-		return err
+		log.WithError(err).WithFields(log.Fields{"duration": time.Since(startTime).Seconds(),
+			"company-file": companyFile}).Error("Completed company data load")
+		return errors.Wrapf(err, "loading company data")
 	}
 
+	startTime = time.Now()
 	fi, err := os.Stat(url)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "checking url type")
 	}
 
+	var loadErrors error
+	baseLogger := log.WithField("url", url)
 	switch mode := fi.Mode(); {
 	case mode.IsDir():
-		err = loadDir(url, companyData, dataMap)
+		baseLogger := baseLogger.WithField("url-type", "directory")
+		baseLogger.Infof("Started load")
+		loadErrors = loadDir(url, companyData, computeLength)
+
 	case mode.IsRegular():
 		if utils.IsZip(url) {
-			err = loadZip(url, companyData, dataMap)
+			baseLogger := baseLogger.WithField("url-type", "archive")
+			baseLogger.Infof("Started load")
+			loadErrors = loadZip(url, companyData, computeLength)
 		} else {
-			err = loadFile(url, companyData, dataMap)
+			baseLogger := baseLogger.WithField("url-type", "file")
+			baseLogger.Infof("Started load")
+			loadErrors = loadFile(url, companyData, computeLength)
 		}
+	default:
+		err = errors.New("unrecognized load type")
 	}
 
-	return err
+	return loadErrors
 }
 
 func loadCompanies(fileName string) (map[string]string, error) {
-
-	log.Infof("Starting load of company data from %v...", fileName)
-
-	startTime := time.Now()
 
 	var data map[string]string
 
 	csvFile, err := os.Open(fileName)
 	if err != nil {
-		return data, fmt.Errorf("problem loading company data due to %v", err)
+		return data, errors.Wrap(err, "problem loading company data ")
 	}
 	defer func(f *os.File) {
 		err := f.Close()
@@ -83,27 +140,21 @@ func loadCompanies(fileName string) (map[string]string, error) {
 			// skip header line
 			continue
 		}
-		data[v[0]] = v[1]
+		sym := strings.ReplaceAll(v[0], "-", "")
+		data[sym] = v[1]
 	}
-
-	log.Infof("Successful company data load from %v took %0.6f seconds",
-		fileName, time.Since(startTime).Seconds())
 
 	return data, nil
 }
 
-func loadDir(dataUrl string, companyData map[string]string, dataMap map[model.Ticker][]*model.Period) error {
-
-	log.Infof("Starting load of files from directory %v...", dataUrl)
-	startTime := time.Now()
+func loadDir(dataUrl string, companyData map[string]string, computeLength int) error {
 
 	files, err := ioutil.ReadDir(dataUrl)
 	if err != nil {
 		return errors.Wrapf(err, "unable to load directory %v", dataUrl)
 	}
 
-	var results error
-
+	var loadErrors error
 	for _, file := range files {
 		split := strings.Split(file.Name(), ".")
 
@@ -117,34 +168,25 @@ func loadDir(dataUrl string, companyData map[string]string, dataMap map[model.Ti
 		csvFile, _ := os.Open(dataUrl + file.Name())
 		reader := csv.NewReader(bufio.NewReader(csvFile))
 		// split[0] should be the ticker symbol
-		err := loadData(strings.ToUpper(split[0]), reader, companyData, dataMap)
+		symbol := strings.ToUpper(split[0])
+		symbol = strings.ReplaceAll(symbol, "-", ".")
+		symbol = strings.ReplaceAll(symbol, "_", "-")
+		companyName := companyData[symbol]
+		err = loadAndTrainData(symbol, companyName, reader, computeLength)
 		if err != nil {
-			results = multierror.Append(results, err)
+			loadErrors = multierror.Append(loadErrors, err)
 		}
+		// Not a critical error, so don't add
 		err = csvFile.Close()
 		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "unable to close company file due to %v"))
+			log.WithError(err).Error("unable to close csv file")
 		}
 	}
 
-	if results != nil {
-		log.Infof("Completed directory load from %v with errors took %0.2f minutes",
-			dataUrl, time.Since(startTime).Minutes())
-		return results
-	}
-
-	log.Infof("Successful directory load from %v took %0.2f minutes",
-		dataUrl, time.Since(startTime).Minutes())
-
-	return nil
+	return loadErrors
 }
 
-func loadZip(dataUrl string, companyData map[string]string, dataMap map[model.Ticker][]*model.Period) error {
-
-	log.Infof("Starting load of zip archive %v...", dataUrl)
-	startTime := time.Now()
-
-	var results error
+func loadZip(dataUrl string, companyData map[string]string, computeLength int) error {
 
 	// Open a zip archive for reading.
 	r, err := zip.OpenReader(dataUrl)
@@ -154,46 +196,56 @@ func loadZip(dataUrl string, companyData map[string]string, dataMap map[model.Ti
 	defer func(r *zip.ReadCloser) {
 		err := r.Close()
 		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "problem closing zip reader"))
+			log.WithError(err).Errorf("problem closing zip reader")
 		}
 	}(r)
 
-	// Iterate through the files testInputData the archive,
-	// printing some of their contents.
-	for _, f := range r.File {
-		names := strings.Split(f.Name, ".")
-		rc, err := f.Open()
-		if err != nil {
-			return errors.Wrap(err, "problem open zip file")
+	var loadErrors error
+	// Setup work pool
+	ctx := context.TODO()
+	var (
+		maxWorkers = runtime.GOMAXPROCS(0)
+		sem        = semaphore.NewWeighted(int64(maxWorkers))
+	)
+
+	for _, zipFile := range r.File {
+
+		if err := sem.Acquire(ctx, 1); err != nil {
+			return errors.New("failed to acquire semaphore during lock")
 		}
 
-		reader := csv.NewReader(rc)
-		err = loadData(strings.ToUpper(names[0]), reader, companyData, dataMap)
-		if err != nil {
-			results = multierror.Append(results, err)
-		}
-		err = rc.Close()
-		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "problem closing zip file reader"))
-		}
+		go func(zf *zip.File) {
+			defer sem.Release(1)
+
+			rc, err := zf.Open()
+			if err != nil {
+				loadErrors = multierror.Append(loadErrors,
+					errors.Wrapf(err, "failed opening file in zip archive '%v'", zf.Name))
+			}
+			defer handleClose(rc)
+
+			names := strings.Split(zf.Name, ".")
+			// split[0] should be the ticker symbol
+			symbol := strings.ToUpper(names[0])
+			symbol = strings.ReplaceAll(symbol, "-", ".")
+			symbol = strings.ReplaceAll(symbol, "_", "-")
+			companyName := companyData[symbol]
+			reader := csv.NewReader(rc)
+			err = loadAndTrainData(symbol, companyName, reader, computeLength)
+			if err != nil {
+				loadErrors = multierror.Append(loadErrors, err)
+			}
+		}(zipFile)
 	}
 
-	if results != nil {
-		log.Infof("Completed zip archive load from %v with errors took %0.2f minutes",
-			dataUrl, time.Since(startTime).Minutes())
-		return results
+	if err := sem.Acquire(ctx, int64(maxWorkers)); err != nil {
+		log.WithError(err).Error("failed to acquire semaphore during unlock")
 	}
 
-	log.Infof("Success loading zip archive from %v took %0.2f minutes",
-		dataUrl, time.Since(startTime).Minutes())
-
-	return nil
+	return loadErrors
 }
 
-func loadFile(dataUrl string, companyData map[string]string, dataMap map[model.Ticker][]*model.Period) error {
-
-	log.Infof("Starting load of file %v...", dataUrl)
-	startTime := time.Now()
+func loadFile(dataUrl string, companyData map[string]string, computeLength int) error {
 
 	_, file := filepath.Split(dataUrl)
 	split := strings.Split(file, ".")
@@ -213,23 +265,23 @@ func loadFile(dataUrl string, companyData map[string]string, dataMap map[model.T
 	}(csvFile)
 
 	reader := csv.NewReader(bufio.NewReader(csvFile))
+
 	// split[0] should be the ticker symbol
-	err := loadData(strings.ToUpper(split[0]), reader, companyData, dataMap)
-	if err != nil {
-		return errors.Wrapf(err, "Completed file load from %v with errors took %0.2f minutes",
-			dataUrl, time.Since(startTime).Minutes())
-	}
-
-	log.Infof("Successful file load from %v took %0.2f minutes",
-		dataUrl, time.Since(startTime).Minutes())
-
-	return nil
+	symbol := strings.ToUpper(split[0])
+	symbol = strings.ReplaceAll(symbol, "-", ".")
+	symbol = strings.ReplaceAll(symbol, "_", "-")
+	companyName := companyData[symbol]
+	return loadAndTrainData(symbol, companyName, reader, computeLength)
 }
 
-func loadData(symbol string, r *csv.Reader, companyData map[string]string,
-	dataMap map[model.Ticker][]*model.Period) error {
-
-	var results error
+// loadAndTrainData parses the csv data from the given reader.
+// After parsing, the periods are trained using the day-to-day algorithm.
+// Optionally, if a computeLength greater than 1 is provide, the patterns are
+// computed for the periods.
+// loadAndTrainData is successful when the related Ticker is persisted to the repo;
+// otherwise an error is returned.
+func loadAndTrainData(symbol, companyName string, r *csv.Reader,
+	computeLength int) error {
 
 	vals, err := r.ReadAll()
 	if err != nil {
@@ -240,51 +292,85 @@ func loadData(symbol string, r *csv.Reader, companyData map[string]string,
 		return errors.New(fmt.Sprintf("empty or invalid CSV for '%v'", symbol))
 	}
 
-	var periods model.PeriodSlice
-	var ticker model.Ticker
+	// Only allow if there are enough periods for train and compute
+	if len(vals) <= 2 {
+		return errors.New(fmt.Sprintf("[%v] not enough periods", symbol))
+	}
 
-	ticker = model.Ticker{Symbol: symbol, Company: companyData[symbol]}
+	var periods model.PeriodSlice
 	for i, v := range vals {
 
+		var parseErrors error
+
 		if i == 0 {
-			// skip header line
+			// TODO jpirkey build header to field map index here
 			continue
 		}
 
-		date, err := convertTime(v[0])
-		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "date field"))
+		row := CsvRow{}
+		if row.Date, err = convertTime(v[csvDate]); err != nil {
+			parseErrors = multierror.Append(parseErrors, errors.Wrapf(err, "[%v] date field", symbol))
 		}
-		open, err := convertFloat(v[1])
-		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "open field"))
+		if row.Open, err = convertFloat(v[csvOpen]); err != nil {
+			parseErrors = multierror.Append(parseErrors, errors.Wrapf(err, "[%v] open field", symbol))
 		}
-		high, err := convertFloat(v[2])
-		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "high field"))
+		if row.High, err = convertFloat(v[csvHigh]); err != nil {
+			parseErrors = multierror.Append(parseErrors, errors.Wrapf(err, "[%v] high field", symbol))
 		}
-		low, err := convertFloat(v[3])
-		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "low field"))
+		if row.Low, err = convertFloat(v[csvLow]); err != nil {
+			parseErrors = multierror.Append(parseErrors, errors.Wrapf(err, "[%v] low field", symbol))
 		}
-		cl, err := convertFloat(v[4])
-		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "close field"))
+		if row.Close, err = convertFloat(v[csvClose]); err != nil {
+			parseErrors = multierror.Append(parseErrors, errors.Wrapf(err, "[%v] close field", symbol))
 		}
-		volume, err := convertInt(v[5])
-		if err != nil {
-			results = multierror.Append(results, errors.Wrap(err, "volume field"))
+		if row.Volume, err = convertInt(v[csvVolume]); err != nil {
+			parseErrors = multierror.Append(parseErrors, errors.Wrapf(err, "[%v] volume field", symbol))
 		}
 
-		p := model.Period{Symbol: symbol, Date: date, Open: open, High: high, Low: low, Close: cl, Volume: volume}
-		periods = append(periods, &p)
+		if parseErrors == nil {
+			p := model.Period{Symbol: symbol, Date: row.Date, Open: row.Open, High: row.High,
+				Low: row.Low, Close: row.Close, Volume: row.Volume}
+			periods = append(periods, &p)
+		} else {
+			log.Warn(parseErrors)
+		}
+	}
+
+	if len(periods) < 2 {
+		return errors.New(fmt.Sprintf("[%v] not enough parsed periods", symbol))
 	}
 
 	sort.Sort(periods)
 
-	dataMap[ticker] = periods
+	timer := metrics.GetOrRegisterTimer("training-timer", loadRegistry)
+	timer.Time(func() { trainDaily(periods) })
 
-	return results
+	insertResult, err := Repos.PeriodRepo.InsertMany(periods)
+	if err != nil {
+		return errors.Wrapf(err, "[%v] inserting periods", symbol)
+	}
+	if len(periods) != len(insertResult.InsertedIDs) {
+		return fmt.Errorf("[%v] periods parsed count does not match inserted count", symbol)
+	}
+
+	ticker := model.Ticker{Symbol: symbol, Company: companyName}
+	err = Repos.TickerRepo.InsertOne(&ticker)
+	if err != nil {
+		return errors.Wrapf(err, "[%v] inserting ticker", symbol)
+	}
+
+	if computeLength > 1 {
+
+		if len(periods) < computeLength+1 {
+			log.Warnf("[%v] not enough periods to compute %v length series",
+				symbol, computeLength)
+		} else {
+			timer := metrics.GetOrRegisterTimer("compute-timer", loadRegistry)
+			timer.Time(func() { computeSeries(computeLength, symbol, periods) })
+		}
+	}
+
+	return nil
 }
 
 func convertFloat(v string) (float64, error) {
@@ -309,4 +395,11 @@ func convertTime(v string) (time.Time, error) {
 		return t, errors.Wrap(err, "unable to convert csv value to time")
 	}
 	return t, nil
+}
+
+func handleClose(c io.Closer) {
+	err := c.Close()
+	if err != nil {
+		log.WithError(err).Error("failed closing")
+	}
 }

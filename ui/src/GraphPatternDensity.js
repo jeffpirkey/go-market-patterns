@@ -30,8 +30,8 @@ class StockPriceGraph extends Component {
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 
-        if (prevState.selectedSymbol !== this.state.selectedSymbol) {
-            let predictId = this.state.selectedSymbol;
+        if (prevProps.selectedSymbol !== this.props.selectedSymbol) {
+            let predictId = this.props.selectedSymbol;
             if (predictId) {
                 let url = 'http://localhost:8081/api/latest/graph/pattern-density/' + predictId;
                 fetch(url).then(response => {
@@ -41,8 +41,6 @@ class StockPriceGraph extends Component {
                     return response.json();
                 }).then(data => {
                     this.setState({
-                        selectedSymbol: data.symbol,
-                        selectedCompany: data.companyName,
                         data: data.graphData
                     })
                 });
@@ -62,19 +60,19 @@ class StockPriceGraph extends Component {
             return null;
         }
 
-        if (this.state.selectedSymbol == null) {
+        if (this.props.selectedSymbol == null) {
             console.debug("render - no symbol");
             return null;
         }
 
-        if (this.state.selectedCompany == null) {
+        if (this.props.selectedCompany == null) {
             console.debug("render - no company");
             return null;
         }
 
-        console.debug("render - " + this.state.selectedSymbol + " " + this.state.selectedCompany);
+        console.debug("render - " + this.props.selectedSymbol + " " + this.props.selectedCompany);
 
-        let title = "(" + this.state.selectedSymbol + ") " + this.state.selectedCompany + " Pattern Density";
+        let title = "(" + this.props.selectedSymbol + ") " + this.props.selectedCompany + " Pattern Density";
         let chartOptions = {
             title: {text: title},
             chart: {height: 300, type: 'column'},
