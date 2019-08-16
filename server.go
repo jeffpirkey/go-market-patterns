@@ -110,7 +110,7 @@ func handlePatternDensity(ctx *gin.Context) {
 		_ = ctx.AbortWithError(http.StatusNotFound, err)
 	}
 
-	companyName, err := Repos.TickerRepo.FindOneCompanyName(id)
+	companyName, err := Repos.TickerRepo.FindOneCompanyNameBySymbol(id)
 	if err != nil {
 		_ = ctx.AbortWithError(http.StatusInternalServerError,
 			errors.Wrapf(err, "problem getting company name for symbol %v", id))

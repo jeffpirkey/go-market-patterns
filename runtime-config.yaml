@@ -1,5 +1,5 @@
 runtime:
-  mongo-url: "mongodb://localhost:27017"
-  mongo-dbname: "marketPatterns"
+  db-connect: "mongodb://localhost:27017"
+  mongo-db-name: "marketPatterns"
   log-level: "INFO"
   http-server-url: ":8081"

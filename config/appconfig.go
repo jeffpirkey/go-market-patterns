@@ -23,8 +23,8 @@ type OptionsConfig struct {
 }
 
 type RuntimeConfig struct {
-	MongoDBUrl    string `yaml:"mongo-url"`
-	MongoDBName   string `yaml:"mongo-dbname"`
+	DbConnect     string `yaml:"db-connect"`
+	MongoDbName   string `yaml:"mongo-db-name"`
 	LogLevel      string `yaml:"log-level"`
 	HttpServerUrl string `yaml:"http-server-url"`
 }

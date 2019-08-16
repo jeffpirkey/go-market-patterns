@@ -20,11 +20,15 @@ type MongoPatternRepo struct {
 	c *mongo.Collection
 }
 
-func (repo MongoPatternRepo) Init() {
+func NewMongoPatternRepo(c *mongo.Collection) *MongoPatternRepo {
+	return &MongoPatternRepo{c}
+}
 
-	created, err := createCollection(repo.c, model.Pattern{})
+func (repo *MongoPatternRepo) Init() {
+
+	created, err := CreateCollection(repo.c, model.Pattern{})
 	if err != nil {
-		log.WithError(err).Fatal("Unable to continue initializing PatternRepo")
+		log.WithError(err).Fatal("Unable to continue initializing MongoPatternRepo")
 	}
 
 	if created {
@@ -49,7 +53,7 @@ func (repo MongoPatternRepo) Init() {
 // Insert functions
 // *********************************************************
 
-func (repo MongoPatternRepo) InsertMany(data []*model.Pattern) (*mongo.InsertManyResult, error) {
+func (repo *MongoPatternRepo) InsertMany(data []*model.Pattern) (int, error) {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
@@ -57,16 +61,16 @@ func (repo MongoPatternRepo) InsertMany(data []*model.Pattern) (*mongo.InsertMan
 	}
 	results, err := repo.c.InsertMany(context.TODO(), dataAry)
 	if err != nil {
-		return results, errors.Wrap(err, "problem inserting many patterns")
+		return len(results.InsertedIDs), errors.Wrap(err, "problem inserting many patterns")
 	}
-	return results, nil
+	return len(results.InsertedIDs), nil
 }
 
 // *********************************************************
 // Delete functions
 // *********************************************************
 
-func (repo MongoPatternRepo) DeleteByLength(length int) error {
+func (repo *MongoPatternRepo) DeleteByLength(length int) error {
 
 	filter := bson.D{{"length", length}}
 	r, err := repo.c.DeleteMany(context.TODO(), filter)
@@ -78,7 +82,7 @@ func (repo MongoPatternRepo) DeleteByLength(length int) error {
 	return nil
 }
 
-func (repo MongoPatternRepo) DropAndCreate() error {
+func (repo *MongoPatternRepo) DropAndCreate() error {
 	err := repo.c.Drop(context.TODO())
 	if err != nil {
 		return err
@@ -92,29 +96,29 @@ func (repo MongoPatternRepo) DropAndCreate() error {
 // Find functions
 // *********************************************************
 
-func (repo MongoPatternRepo) FindOneAndReplace(pattern *model.Pattern) *model.Pattern {
+func (repo *MongoPatternRepo) FindOneAndReplace(pattern *model.Pattern) *model.Pattern {
 
 	filter := bson.D{{"symbol", pattern.Symbol}, {"value", pattern.Value}}
 	var update model.Pattern
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, pattern, replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, pattern, ReplaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
 	}
 	return &update
 }
 
-func (repo MongoPatternRepo) FindAndReplace(pattern *model.Pattern) *model.Pattern {
+func (repo *MongoPatternRepo) FindAndReplace(pattern *model.Pattern) *model.Pattern {
 
 	filter := bson.D{{"symbol", pattern.Symbol}, {"value", pattern.Value}}
 	var update model.Pattern
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, pattern, replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, pattern, ReplaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
 	}
 	return &update
 }
 
-func (repo MongoPatternRepo) FindBySymbol(symbol string) ([]*model.Pattern, error) {
+func (repo *MongoPatternRepo) FindBySymbol(symbol string) ([]*model.Pattern, error) {
 
 	filter := bson.D{{"symbol", symbol}}
 	var findData []*model.Pattern
@@ -143,7 +147,7 @@ func (repo MongoPatternRepo) FindBySymbol(symbol string) ([]*model.Pattern, erro
 	return findData, results
 }
 
-func (repo MongoPatternRepo) FindOneBySymbolAndValue(symbol, value string) (*model.Pattern, error) {
+func (repo *MongoPatternRepo) FindOneBySymbolAndValueAndLength(symbol, value string, length int) (*model.Pattern, error) {
 
 	filter := bson.D{{"symbol", symbol}, {"value", value}}
 
@@ -349,7 +353,7 @@ var (
 	}
 )
 
-func (repo MongoPatternRepo) FindHighestUpProbability(density model.PatternDensity) (*model.Pattern, error) {
+func (repo *MongoPatternRepo) FindHighestUpProbability(density model.PatternDensity) (*model.Pattern, error) {
 
 	var pipeline mongo.Pipeline
 	switch density {
@@ -384,7 +388,7 @@ func (repo MongoPatternRepo) FindHighestUpProbability(density model.PatternDensi
 	return &pattern, nil
 }
 
-func (repo MongoPatternRepo) FindHighestDownProbability(density model.PatternDensity) (*model.Pattern, error) {
+func (repo *MongoPatternRepo) FindHighestDownProbability(density model.PatternDensity) (*model.Pattern, error) {
 
 	var pipeline mongo.Pipeline
 	switch density {
@@ -419,7 +423,7 @@ func (repo MongoPatternRepo) FindHighestDownProbability(density model.PatternDen
 	return &pattern, nil
 }
 
-func (repo MongoPatternRepo) FindHighestNoChangeProbability(density model.PatternDensity) (*model.Pattern, error) {
+func (repo *MongoPatternRepo) FindHighestNoChangeProbability(density model.PatternDensity) (*model.Pattern, error) {
 
 	var pipeline mongo.Pipeline
 	switch density {
@@ -454,7 +458,7 @@ func (repo MongoPatternRepo) FindHighestNoChangeProbability(density model.Patter
 	return &pattern, nil
 }
 
-func (repo MongoPatternRepo) FindLowestUpProbability(density model.PatternDensity) (*model.Pattern, error) {
+func (repo *MongoPatternRepo) FindLowestUpProbability(density model.PatternDensity) (*model.Pattern, error) {
 
 	var pipeline mongo.Pipeline
 	switch density {
@@ -489,7 +493,7 @@ func (repo MongoPatternRepo) FindLowestUpProbability(density model.PatternDensit
 	return &pattern, nil
 }
 
-func (repo MongoPatternRepo) FindLowestDownProbability(density model.PatternDensity) (*model.Pattern, error) {
+func (repo *MongoPatternRepo) FindLowestDownProbability(density model.PatternDensity) (*model.Pattern, error) {
 
 	var pipeline mongo.Pipeline
 	switch density {
@@ -524,7 +528,7 @@ func (repo MongoPatternRepo) FindLowestDownProbability(density model.PatternDens
 	return &pattern, nil
 }
 
-func (repo MongoPatternRepo) FindLowestNoChangeProbability(density model.PatternDensity) (*model.Pattern, error) {
+func (repo *MongoPatternRepo) FindLowestNoChangeProbability(density model.PatternDensity) (*model.Pattern, error) {
 
 	var pipeline mongo.Pipeline
 	switch density {

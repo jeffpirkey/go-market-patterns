@@ -35,7 +35,7 @@ func (suite *MainTestSuite) TestTruncLoadFile() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), symbol, ticker.Symbol)
 
-	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, nil)
+	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, mal.SortAsc)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 14059, len(periods))
 
@@ -58,7 +58,7 @@ func (suite *LoadCsvTestSuite) TestTruncLoadDir() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), symbol, ticker.Symbol)
 
-	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, nil)
+	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, mal.SortAsc)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 14059, len(periods))
 
@@ -81,7 +81,7 @@ func (suite *LoadCsvTestSuite) TestTruncLoadZipArchive() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), symbol, ticker.Symbol)
 
-	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, nil)
+	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, mal.SortAsc)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 14059, len(periods))
 

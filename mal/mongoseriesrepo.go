@@ -20,11 +20,15 @@ type MongoSeriesRepo struct {
 	c *mongo.Collection
 }
 
+func NewMongoSeriesRepo(c *mongo.Collection) *MongoSeriesRepo {
+	return &MongoSeriesRepo{c}
+}
+
 func (repo MongoSeriesRepo) Init() {
 
-	created, err := createCollection(repo.c, model.Series{})
+	created, err := CreateCollection(repo.c, model.Series{})
 	if err != nil {
-		log.WithError(err).Fatal("Unable to continue initializing SeriesRepo")
+		log.WithError(err).Fatal("Unable to continue initializing MongoSeriesRepo")
 	}
 
 	if created {
@@ -48,9 +52,9 @@ func (repo MongoSeriesRepo) Init() {
 //   Find functions
 // *********************************************************
 
-func (repo MongoSeriesRepo) FindBySymbol(symbol string) ([]model.Series, error) {
+func (repo MongoSeriesRepo) FindBySymbol(symbol string) ([]*model.Series, error) {
 	filter := bson.D{{"symbol", symbol}}
-	var findData []model.Series
+	var findData []*model.Series
 	cur, err := repo.c.Find(context.TODO(), filter)
 	if err != nil {
 		return findData, errors.Wrap(err, "unable to find by symbol")
@@ -65,7 +69,7 @@ func (repo MongoSeriesRepo) FindBySymbol(symbol string) ([]model.Series, error) 
 			results = multierror.Append(results, err)
 			continue
 		}
-		findData = append(findData, doc)
+		findData = append(findData, &doc)
 	}
 	return findData, results
 }

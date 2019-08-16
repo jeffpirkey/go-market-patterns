@@ -49,7 +49,7 @@ func predict(symbol string) (report.Prediction, error) {
 		if strings.Contains(match, model.NotDefined) {
 			log.Info("No supporting data")
 		} else {
-			pattern, err := Repos.PatternRepo.FindOneBySymbolAndValue(symbol, match)
+			pattern, err := Repos.PatternRepo.FindOneBySymbolAndValueAndLength(symbol, match, s.Length)
 			if err != nil {
 				return prediction, err
 			}
