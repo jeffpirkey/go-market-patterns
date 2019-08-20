@@ -85,7 +85,34 @@ func (repo *MemPatternRepo) FindOneBySymbolAndValueAndLength(symbol, value strin
 }
 
 func (repo *MemPatternRepo) FindHighestUpProbability(density model.PatternDensity) (*model.Pattern, error) {
-	panic("implement me")
+
+	var max *model.Pattern
+	for _, valueMap := range repo.data {
+		for _, lengthMap := range valueMap {
+			for _, pattern := range lengthMap {
+				if max == nil {
+					max = pattern
+				} else {
+					switch density {
+					case model.PatternDensityLow:
+						if pattern.UpCount/pattern.TotalCount > max.UpCount/max.TotalCount {
+							max = pattern
+						}
+					case model.PatternDensityMedium:
+						if pattern.TotalCount > 500 && pattern.UpCount/pattern.TotalCount > max.UpCount/max.TotalCount {
+							max = pattern
+						}
+					case model.PatternDensityHigh:
+						if pattern.TotalCount > 1000 && pattern.UpCount/pattern.TotalCount > max.UpCount/max.TotalCount {
+							max = pattern
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return max, nil
 }
 
 func (repo *MemPatternRepo) FindHighestDownProbability(density model.PatternDensity) (*model.Pattern, error) {
