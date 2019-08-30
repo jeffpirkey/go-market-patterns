@@ -18,7 +18,7 @@ run: build
 	./$(BINARY_NAME) -log-level=INFO
 
 run-memory: build
-	./$(BINARY_NAME) -log-level=INFO -trunc-load=true -data-file=data/stocks-small.zip -company-file=data/nyse-symb-name.csv
+	./$(BINARY_NAME) -log-level=INFO -trunc-load=true -data-file=data/stocks-small.zip -company-file=data/nyse-symb-name.csv -compute=3
 
 run-mongo: build
 	./$(BINARY_NAME) -log-level=INFO -db-connect=mongodb://localhost:27017

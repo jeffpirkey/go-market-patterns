@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go-market-patterns/model"
 	"go-market-patterns/model/report"
+	"sort"
 	"sync"
 )
 
@@ -68,7 +69,7 @@ func (repo *MemTickerRepo) FindOneCompanyNameBySymbol(symbol string) (string, er
 func (repo *MemTickerRepo) FindSymbols() []string {
 	symbols := make([]string, len(repo.data))
 	idx := 0
-	for symbol, _ := range repo.data {
+	for symbol := range repo.data {
 		symbols[idx] = symbol
 		idx++
 	}
@@ -80,6 +81,8 @@ func (repo *MemTickerRepo) FindSymbolsAndCompany() *report.TickerSymbolCompanySl
 	idx := 0
 	for _, ticker := range repo.data {
 		slice[idx] = &report.TickerSymbolCompany{Symbol: ticker.Symbol, Company: ticker.Company}
+		idx++
 	}
+	sort.Sort(slice)
 	return &slice
 }

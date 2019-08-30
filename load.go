@@ -62,7 +62,7 @@ var (
 // compute patterns are run for that length.
 // If an error is returned, this indicates that some portion
 // of the process failed, but maybe not all.
-func load(url, companyFile string, computeLength int) error {
+func load(url, companyFile string, computeLengths []int) error {
 
 	// Allow only one load to be happening at a time
 	loadMutex.Lock()
@@ -91,17 +91,17 @@ func load(url, companyFile string, computeLength int) error {
 	case mode.IsDir():
 		baseLogger := baseLogger.WithField("url-type", "directory")
 		baseLogger.Infof("Started load")
-		loadErrors = loadDir(url, companyData, computeLength)
+		loadErrors = loadDir(url, companyData, computeLengths)
 
 	case mode.IsRegular():
 		if utils.IsZip(url) {
 			baseLogger := baseLogger.WithField("url-type", "archive")
 			baseLogger.Infof("Started load")
-			loadErrors = loadZip(url, companyData, computeLength)
+			loadErrors = loadZip(url, companyData, computeLengths)
 		} else {
 			baseLogger := baseLogger.WithField("url-type", "file")
 			baseLogger.Infof("Started load")
-			loadErrors = loadFile(url, companyData, computeLength)
+			loadErrors = loadFile(url, companyData, computeLengths)
 		}
 	default:
 		err = errors.New("unrecognized load type")
@@ -147,7 +147,7 @@ func loadCompanies(fileName string) (map[string]string, error) {
 	return data, nil
 }
 
-func loadDir(dataUrl string, companyData map[string]string, computeLength int) error {
+func loadDir(dataUrl string, companyData map[string]string, computeLengths []int) error {
 
 	files, err := ioutil.ReadDir(dataUrl)
 	if err != nil {
@@ -172,7 +172,7 @@ func loadDir(dataUrl string, companyData map[string]string, computeLength int) e
 		symbol = strings.ReplaceAll(symbol, "-", ".")
 		symbol = strings.ReplaceAll(symbol, "_", "-")
 		companyName := companyData[symbol]
-		err = loadAndTrainData(symbol, companyName, reader, computeLength)
+		err = loadAndTrainData(symbol, companyName, reader, computeLengths)
 		if err != nil {
 			loadErrors = multierror.Append(loadErrors, err)
 		}
@@ -186,7 +186,7 @@ func loadDir(dataUrl string, companyData map[string]string, computeLength int) e
 	return loadErrors
 }
 
-func loadZip(dataUrl string, companyData map[string]string, computeLength int) error {
+func loadZip(dataUrl string, companyData map[string]string, computeLengths []int) error {
 
 	// Open a zip archive for reading.
 	r, err := zip.OpenReader(dataUrl)
@@ -231,7 +231,7 @@ func loadZip(dataUrl string, companyData map[string]string, computeLength int) e
 			symbol = strings.ReplaceAll(symbol, "_", "-")
 			companyName := companyData[symbol]
 			reader := csv.NewReader(rc)
-			err = loadAndTrainData(symbol, companyName, reader, computeLength)
+			err = loadAndTrainData(symbol, companyName, reader, computeLengths)
 			if err != nil {
 				loadErrors = multierror.Append(loadErrors, err)
 			}
@@ -245,7 +245,7 @@ func loadZip(dataUrl string, companyData map[string]string, computeLength int) e
 	return loadErrors
 }
 
-func loadFile(dataUrl string, companyData map[string]string, computeLength int) error {
+func loadFile(dataUrl string, companyData map[string]string, computeLengths []int) error {
 
 	_, file := filepath.Split(dataUrl)
 	split := strings.Split(file, ".")
@@ -271,7 +271,7 @@ func loadFile(dataUrl string, companyData map[string]string, computeLength int) 
 	symbol = strings.ReplaceAll(symbol, "-", ".")
 	symbol = strings.ReplaceAll(symbol, "_", "-")
 	companyName := companyData[symbol]
-	return loadAndTrainData(symbol, companyName, reader, computeLength)
+	return loadAndTrainData(symbol, companyName, reader, computeLengths)
 }
 
 // loadAndTrainData parses the csv data from the given reader.
@@ -281,7 +281,7 @@ func loadFile(dataUrl string, companyData map[string]string, computeLength int) 
 // loadAndTrainData is successful when the related Ticker is persisted to the repo;
 // otherwise an error is returned.
 func loadAndTrainData(symbol, companyName string, r *csv.Reader,
-	computeLength int) error {
+	computeLengths []int) error {
 
 	vals, err := r.ReadAll()
 	if err != nil {
@@ -359,14 +359,15 @@ func loadAndTrainData(symbol, companyName string, r *csv.Reader,
 		return errors.Wrapf(err, "[%v] inserting ticker", symbol)
 	}
 
-	if computeLength > 1 {
-
-		if len(periods) < computeLength+1 {
-			log.Warnf("[%v] not enough periods to compute %v length series",
-				symbol, computeLength)
-		} else {
-			timer := metrics.GetOrRegisterTimer("compute-timer", loadRegistry)
-			timer.Time(func() { computeSeries(computeLength, symbol, periods) })
+	if len(computeLengths) > 0 {
+		for _, computeLength := range computeLengths {
+			if len(periods) < computeLength+1 {
+				log.Warnf("[%v] not enough periods to compute %v length series",
+					symbol, computeLength)
+			} else {
+				timer := metrics.GetOrRegisterTimer("compute-timer", loadRegistry)
+				timer.Time(func() { computeSeries(computeLength, symbol, periods) })
+			}
 		}
 	}
 

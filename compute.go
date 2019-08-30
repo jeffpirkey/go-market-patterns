@@ -13,19 +13,28 @@ import (
 
 // Deletes all patterns and series with the given length.  Then, computes
 // all ticker periods for the given series length.
-func truncAndComputeAllSeries(computeLength int) error {
+func truncAndComputeAllSeries(computeLengths []int) error {
 
-	err := Repos.PatternRepo.DeleteByLength(computeLength)
-	if err != nil {
-		return errors.Wrap(err, "problems trunc and computing series")
+	var computeErrors error
+	for _, computeLength := range computeLengths {
+		err := Repos.PatternRepo.DeleteByLength(computeLength)
+		if err != nil {
+			return errors.Wrap(err, "problems trunc and computing series")
+		}
+
+		err = Repos.SeriesRepo.DeleteByLength(computeLength)
+		if err != nil {
+			return errors.Wrap(err, "problems trunc and computing series")
+		}
+
+		err = recomputeAllSeries(computeLength)
+
+		if err != nil {
+			computeErrors = multierror.Append(computeErrors, err)
+		}
 	}
 
-	err = Repos.SeriesRepo.DeleteByLength(computeLength)
-	if err != nil {
-		return errors.Wrap(err, "problems trunc and computing series")
-	}
-
-	return recomputeAllSeries(computeLength)
+	return computeErrors
 }
 
 func recomputeAllSeries(computeLength int) error {
