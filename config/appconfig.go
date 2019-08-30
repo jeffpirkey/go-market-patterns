@@ -1,11 +1,10 @@
 package config
 
 import (
+	"errors"
 	"github.com/namsral/flag"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"strconv"
 )
 
 type AppConfig struct {
@@ -14,17 +13,17 @@ type AppConfig struct {
 }
 
 type OptionsConfig struct {
-	StartHttpServer bool   `yaml:"start-http-server"`
-	TruncLoad       bool   `yaml:"trunc-load"`
-	DataFile        string `yaml:"data-file"`
-	CompanyFile     string `yaml:"company-file"`
-	PrintMDFile     string `yaml:"print-markdown"`
-	Compute         int    `yaml:"compute"`
+	StartHttpServer bool       `yaml:"start-http-server"`
+	TruncLoad       bool       `yaml:"trunc-load"`
+	DataFile        string     `yaml:"data-file"`
+	CompanyFile     string     `yaml:"company-file"`
+	PrintMDFile     string     `yaml:"print-markdown"`
+	Compute         arrayFlags `yaml:"compute"`
 }
 
 type RuntimeConfig struct {
-	MongoDBUrl    string `yaml:"mongo-url"`
-	MongoDBName   string `yaml:"mongo-dbname"`
+	DbConnect     string `yaml:"db-connect"`
+	MongoDbName   string `yaml:"mongo-db-name"`
 	LogLevel      string `yaml:"log-level"`
 	HttpServerUrl string `yaml:"http-server-url"`
 }
@@ -37,27 +36,46 @@ func (c RuntimeConfig) Level() log.Level {
 	return level
 }
 
+type arrayFlags []int
+
+func (i *arrayFlags) String() string {
+	return "array flags"
+}
+
+func (i *arrayFlags) Set(value string) error {
+	tmp, err := strconv.Atoi(value)
+	if err != nil {
+		return err
+	}
+	if tmp != 0 && (tmp == 1 || tmp < 0) {
+		return errors.New("compute length must be greater than 1")
+	}
+
+	*i = append(*i, tmp)
+	return nil
+}
+
 var (
-	initialized = false
-	config      = &AppConfig{}
+	initialized    = false
+	config         = &AppConfig{}
+	computeLengths arrayFlags
 )
 
-func Init(fileName string) *AppConfig {
+func Init() *AppConfig {
 
 	if initialized {
 		return config
 	}
 
-	data, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		log.Fatalf("unable to load app configuration due to %v", err)
-	}
-
-	err = yaml.Unmarshal([]byte(data), &config)
-	if err != nil {
-		log.Fatal(errors.Wrapf(err, "unable to process %v due to %v", fileName))
-	}
-
+	// Runtime properties
+	flag.StringVar(&config.Runtime.DbConnect, "db-connect", "memory",
+		"the db connection protocol, defaults to memory")
+	flag.StringVar(&config.Runtime.MongoDbName, "mongo-db-name", "marketPatterns",
+		"the database name to use in mongo, defaults to marketPatterns")
+	flag.StringVar(&config.Runtime.LogLevel, "log-level", "DEBUG",
+		"the logging level, defaults to DEBUG")
+	flag.StringVar(&config.Runtime.HttpServerUrl, "http-server-url", ":8081",
+		"the http server url, defaults to :8081")
 	// Optional properties
 	flag.BoolVar(&config.Options.StartHttpServer, "start-http-server", true,
 		"start the http server, defaults to true")
@@ -69,7 +87,7 @@ func Init(fileName string) *AppConfig {
 		"load symbol to company names")
 	flag.StringVar(&config.Options.PrintMDFile, "print-markdown", "",
 		"print markdown for the given symbol to output directory")
-	flag.IntVar(&config.Options.Compute, "compute", 0,
+	flag.Var(&config.Options.Compute, "compute",
 		"compute the given series length, deleting the series if it exists")
 
 	flag.Parse()
@@ -78,10 +96,6 @@ func Init(fileName string) *AppConfig {
 		log.SetReportCaller(true)
 	}
 	log.SetLevel(config.Runtime.Level())
-
-	if config.Options.Compute != 0 && (config.Options.Compute == 1 || config.Options.Compute < 0) {
-		log.Fatal("compute length must be greater than 1")
-	}
 
 	initialized = true
 

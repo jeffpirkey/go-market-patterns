@@ -5,27 +5,36 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"market-patterns/mal"
-	"market-patterns/model"
+	"go-market-patterns/mal"
+	"go-market-patterns/model"
 	"strconv"
 	"sync"
 )
 
 // Deletes all patterns and series with the given length.  Then, computes
 // all ticker periods for the given series length.
-func truncAndComputeAllSeries(computeLength int) error {
+func truncAndComputeAllSeries(computeLengths []int) error {
 
-	err := Repos.PatternRepo.DeleteByLength(computeLength)
-	if err != nil {
-		return errors.Wrap(err, "problems trunc and computing series")
+	var computeErrors error
+	for _, computeLength := range computeLengths {
+		err := Repos.PatternRepo.DeleteByLength(computeLength)
+		if err != nil {
+			return errors.Wrap(err, "problems trunc and computing series")
+		}
+
+		err = Repos.SeriesRepo.DeleteByLength(computeLength)
+		if err != nil {
+			return errors.Wrap(err, "problems trunc and computing series")
+		}
+
+		err = recomputeAllSeries(computeLength)
+
+		if err != nil {
+			computeErrors = multierror.Append(computeErrors, err)
+		}
 	}
 
-	err = Repos.SeriesRepo.DeleteByLength(computeLength)
-	if err != nil {
-		return errors.Wrap(err, "problems trunc and computing series")
-	}
-
-	return recomputeAllSeries(computeLength)
+	return computeErrors
 }
 
 func recomputeAllSeries(computeLength int) error {
@@ -104,7 +113,7 @@ func computeSeries(computeLength int, symbol string, periods []*model.Period) {
 		var pattern *model.Pattern
 		pattern, found := patternMap[patName]
 		if !found {
-			pattern = &model.Pattern{Symbol: symbol, Value: patName}
+			pattern = &model.Pattern{Symbol: symbol, Value: patName, Length: computeLength}
 			patternMap[patName] = pattern
 		}
 

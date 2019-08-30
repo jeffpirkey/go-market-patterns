@@ -4,9 +4,9 @@ import (
 	"errors"
 	"github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
-	"market-patterns/config"
-	"market-patterns/mal"
-	"market-patterns/tools"
+	"go-market-patterns/config"
+	"go-market-patterns/mal"
+	"go-market-patterns/tools"
 	"os"
 	"strings"
 	"time"
@@ -22,7 +22,7 @@ const (
 
 func main() {
 
-	conf := config.Init(appConfig)
+	conf := config.Init()
 
 	Repos = mal.New(conf)
 
@@ -61,7 +61,7 @@ func main() {
 		}
 		log.Infof("Completed trunc and load took %0.2f minutes",
 			time.Since(startTime).Minutes())
-	} else if conf.Options.Compute > 1 {
+	} else if len(conf.Options.Compute) > 0 {
 		log.Infof("Started computing all periods with length %v...", conf.Options.Compute)
 		startTime := time.Now()
 		err := truncAndComputeAllSeries(conf.Options.Compute)
@@ -90,7 +90,7 @@ func main() {
 
 // This function deletes all the repo data, reloads from the given data and company files.
 // After loading, the one-day train is executed against the periods.
-func truncAndLoad(dataFile, companyFile string, computeLength int) error {
+func truncAndLoad(dataFile, companyFile string, computeLengths []int) error {
 
 	if dataFile == "" {
 		log.Fatal("data-file must be specified for a trunc and load.")
@@ -125,5 +125,6 @@ func truncAndLoad(dataFile, companyFile string, computeLength int) error {
 	log.Infof("Completed recreating repos took %0.2f minutes",
 		time.Since(startTime).Minutes())
 
-	return load(dataFile, companyFile, computeLength)
+	return load(dataFile, companyFile, computeLengths)
+
 }

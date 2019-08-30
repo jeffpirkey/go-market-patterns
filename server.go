@@ -5,10 +5,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"market-patterns/config"
-	"market-patterns/model"
-	"market-patterns/model/graph"
-	"market-patterns/model/report"
+	"go-market-patterns/config"
+	"go-market-patterns/model"
+	"go-market-patterns/model/graph"
+	"go-market-patterns/model/report"
 	"net/http"
 	_ "net/http/pprof"
 	"sort"
@@ -110,7 +110,7 @@ func handlePatternDensity(ctx *gin.Context) {
 		_ = ctx.AbortWithError(http.StatusNotFound, err)
 	}
 
-	companyName, err := Repos.TickerRepo.FindOneCompanyName(id)
+	companyName, err := Repos.TickerRepo.FindOneCompanyNameBySymbol(id)
 	if err != nil {
 		_ = ctx.AbortWithError(http.StatusInternalServerError,
 			errors.Wrapf(err, "problem getting company name for symbol %v", id))

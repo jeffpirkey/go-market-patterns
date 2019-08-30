@@ -19,7 +19,7 @@ type Pattern struct {
 	Value         string `json:"value"`
 	UpCount       int    `json:"upCount"`
 	DownCount     int    `json:"downCount"`
-	NoChangeCount int    `json:"nochangeCount"`
+	NoChangeCount int    `json:"noChangeCount"`
 	TotalCount    int    `json:"totalCount"`
 }
 

@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"market-patterns/config"
-	"market-patterns/mal"
+	"go-market-patterns/config"
+	"go-market-patterns/mal"
 	"testing"
 )
 
@@ -17,7 +17,7 @@ func TestMainTestSuite(t *testing.T) {
 }
 
 func (suite *MainTestSuite) SetupSuite() {
-	conf := config.Init("runtime-config-test.yaml")
+	conf := config.Init()
 	Repos = mal.New(conf)
 }
 
@@ -27,7 +27,7 @@ func (suite *MainTestSuite) TearDownTest() {
 
 func (suite *MainTestSuite) TestTruncLoadFile() {
 
-	err := truncAndLoad(testIbmFile, testCompanyFile, 3)
+	err := truncAndLoad(testIbmFile, testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"
@@ -35,7 +35,7 @@ func (suite *MainTestSuite) TestTruncLoadFile() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), symbol, ticker.Symbol)
 
-	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, nil)
+	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, mal.SortAsc)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 14059, len(periods))
 
@@ -50,7 +50,7 @@ func (suite *MainTestSuite) TestTruncLoadFile() {
 
 func (suite *LoadCsvTestSuite) TestTruncLoadDir() {
 
-	err := truncAndLoad("data/test/", testCompanyFile, 3)
+	err := truncAndLoad("data/test/", testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"
@@ -58,7 +58,7 @@ func (suite *LoadCsvTestSuite) TestTruncLoadDir() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), symbol, ticker.Symbol)
 
-	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, nil)
+	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, mal.SortAsc)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 14059, len(periods))
 
@@ -73,7 +73,7 @@ func (suite *LoadCsvTestSuite) TestTruncLoadDir() {
 
 func (suite *LoadCsvTestSuite) TestTruncLoadZipArchive() {
 
-	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, 3)
+	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"
@@ -81,7 +81,7 @@ func (suite *LoadCsvTestSuite) TestTruncLoadZipArchive() {
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), symbol, ticker.Symbol)
 
-	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, nil)
+	periods, err := Repos.PeriodRepo.FindBySymbol(symbol, mal.SortAsc)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), 14059, len(periods))
 

@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"market-patterns/config"
-	"market-patterns/mal"
-	"market-patterns/model"
+	"go-market-patterns/config"
+	"go-market-patterns/mal"
+	"go-market-patterns/model"
 	"testing"
 )
 
@@ -18,7 +18,7 @@ func TestPatternRepoTestSuite(t *testing.T) {
 }
 
 func (suite *PatternRepoTestSuite) SetupSuite() {
-	conf := config.Init("runtime-config-test.yaml")
+	conf := config.Init()
 	Repos = mal.New(conf)
 }
 
@@ -28,7 +28,7 @@ func (suite *PatternRepoTestSuite) TearDownTest() {
 
 func (suite *PatternRepoTestSuite) TestHighestUp() {
 
-	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, 3)
+	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
 	pattern, err := Repos.PatternRepo.FindHighestUpProbability(model.PatternDensityLow)
 	assert.NoError(suite.T(), err)

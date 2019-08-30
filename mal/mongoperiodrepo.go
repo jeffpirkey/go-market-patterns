@@ -5,11 +5,11 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"go-market-patterns/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx"
-	"market-patterns/model"
 )
 
 const (
@@ -25,11 +25,15 @@ var (
 	sortSymbolDsc = bson.D{{"symbol", 0}}
 )
 
-func (repo MongoPeriodRepo) Init() {
+func NewMongoPeriodRepo(c *mongo.Collection) *MongoPeriodRepo {
+	return &MongoPeriodRepo{c}
+}
 
-	created, err := createCollection(repo.c, model.Period{})
+func (repo *MongoPeriodRepo) Init() {
+
+	created, err := CreateCollection(repo.c, model.Period{})
 	if err != nil {
-		log.WithError(err).Fatal("Unable to continue initializing PeriodRepo")
+		log.WithError(err).Fatal("Unable to continue initializing MongoPeriodRepo")
 	}
 
 	if created {
@@ -52,24 +56,28 @@ func (repo MongoPeriodRepo) Init() {
 //   Insert functions
 // *********************************************************
 
-func (repo MongoPeriodRepo) InsertMany(data []*model.Period) (*mongo.InsertManyResult, error) {
+func (repo *MongoPeriodRepo) InsertMany(data []*model.Period) (int, error) {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
 		dataAry[i] = v
 	}
 	result, err := repo.c.InsertMany(context.TODO(), dataAry)
-	if err != nil {
-		return result, errors.Wrap(err, "problem inserting many periods")
+	insertIds := 0
+	if result != nil {
+		insertIds = len(result.InsertedIDs)
 	}
-	return result, nil
+	if err != nil {
+		return insertIds, errors.Wrap(err, "problem inserting many periods")
+	}
+	return len(result.InsertedIDs), nil
 }
 
 // *********************************************************
 //   Delete functions
 // *********************************************************
 
-func (repo MongoPeriodRepo) DropAndCreate() error {
+func (repo *MongoPeriodRepo) DropAndCreate() error {
 	err := repo.c.Drop(context.TODO())
 	if err != nil {
 		return err
@@ -82,11 +90,11 @@ func (repo MongoPeriodRepo) DropAndCreate() error {
 //   Find functions
 // *********************************************************
 
-func (repo MongoPeriodRepo) FindOneAndReplace(data *model.Period) *model.Period {
+func (repo *MongoPeriodRepo) FindOneAndReplace(data *model.Period) *model.Period {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	var update model.Period
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, ReplaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
 	}
@@ -97,32 +105,35 @@ func (repo MongoPeriodRepo) FindAndReplace(data *model.Period) *model.Period {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	var update model.Period
-	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, replaceOpt).Decode(&update)
+	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, ReplaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
 	}
 	return &update
 }
 
-func (repo MongoPeriodRepo) FindOneAndUpdateDailyResult(data *model.Period) (*model.Period, error) {
+func (repo *MongoPeriodRepo) FindOneAndUpdateDailyResult(data *model.Period) (*model.Period, error) {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	update := bson.D{{"$set", bson.D{{"dailyResult", data.DailyResult}}}}
 	var doc model.Period
-	err := repo.c.FindOneAndUpdate(context.TODO(), filter, data, updateOpt).Decode(&update)
+	err := repo.c.FindOneAndUpdate(context.TODO(), filter, data, UpdateOpt).Decode(&update)
 	if err != nil {
 		return &doc, errors.Wrap(err, "problem updating period daily result")
 	}
 	return &doc, nil
 }
 
-func (repo MongoPeriodRepo) FindBySymbol(symbol string, sort int) (model.PeriodSlice, error) {
+func (repo *MongoPeriodRepo) FindBySymbol(symbol string, sortDir SortDirection) (model.PeriodSlice, error) {
 
 	opts := &options.FindOptions{}
-	if sort == 1 {
+	if sortDir == SortAsc {
 		opts.Sort = sortSymbolAsc
-	} else {
+	} else if sortDir == SortDsc {
 		opts.Sort = sortSymbolDsc
+	} else {
+		log.Warnf("unrecognized sort direction '%v', defaulting to ascending", sortDir)
+		opts.Sort = sortSymbolAsc
 	}
 
 	filter := bson.D{{"symbol", symbol}}
@@ -146,7 +157,7 @@ func (repo MongoPeriodRepo) FindBySymbol(symbol string, sort int) (model.PeriodS
 	return findData, results
 }
 
-func (repo MongoPeriodRepo) FindOneBySymbolAndValue(symbol, value string) (*model.Period, error) {
+func (repo *MongoPeriodRepo) FindOneBySymbolAndValue(symbol, value string) (*model.Period, error) {
 
 	filter := bson.D{{"symbol", symbol}, {"value", value}}
 

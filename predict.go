@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"market-patterns/mal"
-	"market-patterns/model"
-	"market-patterns/model/report"
+	"go-market-patterns/mal"
+	"go-market-patterns/model"
+	"go-market-patterns/model/report"
 	"strings"
 	"time"
 )
@@ -33,7 +33,7 @@ func predict(symbol string) (report.Prediction, error) {
 
 	for _, s := range series {
 
-		log.Infof("Processing prediction for %v the series of %v...", symbol, s.Name)
+		log.Infof("Processing prediction for %v with series %v...", symbol, s.Name)
 
 		lastPeriods := slice.LastByRange(s.Length)
 		var match string
@@ -49,7 +49,7 @@ func predict(symbol string) (report.Prediction, error) {
 		if strings.Contains(match, model.NotDefined) {
 			log.Info("No supporting data")
 		} else {
-			pattern, err := Repos.PatternRepo.FindOneBySymbolAndValue(symbol, match)
+			pattern, err := Repos.PatternRepo.FindOneBySymbolAndValueAndLength(symbol, match, s.Length)
 			if err != nil {
 				return prediction, err
 			}

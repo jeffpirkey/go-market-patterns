@@ -4,8 +4,8 @@ import (
 	"encoding/csv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"market-patterns/config"
-	"market-patterns/mal"
+	"go-market-patterns/config"
+	"go-market-patterns/mal"
 	"strings"
 	"testing"
 )
@@ -19,7 +19,7 @@ func TestTrainTestSuite(t *testing.T) {
 }
 
 func (suite *TrainTestSuite) SetupSuite() {
-	conf := config.Init("runtime-config-test.yaml")
+	conf := config.Init()
 	Repos = mal.New(conf)
 }
 
@@ -36,7 +36,7 @@ func (suite *TrainTestSuite) TestTrainAllDaily() {
 	r := csv.NewReader(strings.NewReader(testInputData))
 	r.TrimLeadingSpace = true
 
-	err := loadAndTrainData("test", "test compnay", r, 3)
+	err := loadAndTrainData("test", "test compnay", r, []int{3})
 	assert.NoError(suite.T(), err)
 
 	/*

@@ -1,6 +1,6 @@
 # market-patterns
 
-Using the concept of [The Hidden Markov Model](https://en.wikipedia.org/wiki/Hidden_Markov_model), this project uses historical NYSE stock information to build patterns given a timeslice of periods.  
+Using the concept of [The Hidden Markov Model](https://en.wikipedia.org/wiki/Hidden_Markov_model), this project uses historical NYSE stock information to build patterns given a time slice of periods.  
 
 ## Requirements
 
@@ -15,12 +15,12 @@ Using the concept of [The Hidden Markov Model](https://en.wikipedia.org/wiki/Hid
 
 If you just want to run the application, all you need to do is execute the make command, as follows:
 
-`make run`
+`make run-memory`
 
-And then you can point you browser to the following:
+This will start up the current UI build using an in-memory repo with three stock symbols.  
+You can point you browser to the following:
 
 `localhost:8081`
-
 
 ## Makefiles
 
@@ -30,8 +30,11 @@ We've included makefiles to make things a bit easier to do:
 |:------------|:------------|
 |all| tests, builds and runs the application|
 |build| builds to application|
-|run| runs the application|
+|run| runs the application with an empty in-memory repo|
+|run-memory| runs the application with a populated in-memory repo|
+|run-mongo| runs the application against mongo repos|
 |trunc-load| executes the trunc and load using the stocks.zip and nyse-symb-name.csv files|
+|train| executes a pattern training with a specific length defined in the compute arg|
 |test| executes go test on the application|
 |cover| runs go cover outputting the results to coverage.out and coverage.html|
 |clean| removes artifacts|
