@@ -31,7 +31,10 @@ We've included makefiles to make things a bit easier to do:
 |all| tests, builds and runs the application|
 |build| builds to application|
 |run| runs the application with an empty in-memory repo|
+|run-memory| runs the application with a populated in-memory repo|
+|run-mongo| runs the application against mongo repos|
 |trunc-load| executes the trunc and load using the stocks.zip and nyse-symb-name.csv files|
+|train| executes a pattern training with a specific length defined in the compute arg|
 |test| executes go test on the application|
 |cover| runs go cover outputting the results to coverage.out and coverage.html|
 |clean| removes artifacts|
