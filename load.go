@@ -345,11 +345,11 @@ func loadAndTrainData(symbol, companyName string, r *csv.Reader,
 	timer := metrics.GetOrRegisterTimer("training-timer", loadRegistry)
 	timer.Time(func() { trainDaily(periods) })
 
-	insertResult, err := Repos.PeriodRepo.InsertMany(periods)
+	insertCount, err := Repos.PeriodRepo.InsertMany(periods)
 	if err != nil {
 		return errors.Wrapf(err, "[%v] inserting periods", symbol)
 	}
-	if len(periods) != len(insertResult.InsertedIDs) {
+	if len(periods) != insertCount {
 		return fmt.Errorf("[%v] periods parsed count does not match inserted count", symbol)
 	}
 

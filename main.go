@@ -22,7 +22,7 @@ const (
 
 func main() {
 
-	conf := config.Init(appConfig)
+	conf := config.Init()
 
 	Repos = mal.New(conf)
 

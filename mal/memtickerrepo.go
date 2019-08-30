@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"go-market-patterns/model"
 	"go-market-patterns/model/report"
+	"sync"
 )
 
 type MemTickerRepo struct {
 	// map of ticker's symbol to a ticker pointer
-	data map[string]*model.Ticker
+	data  map[string]*model.Ticker
+	mutex *sync.Mutex
 }
 
 func NewMemTickerRepo() *MemTickerRepo {
@@ -17,6 +19,7 @@ func NewMemTickerRepo() *MemTickerRepo {
 
 func (repo *MemTickerRepo) Init() {
 	repo.data = make(map[string]*model.Ticker)
+	repo.mutex = &sync.Mutex{}
 }
 
 func (repo *MemTickerRepo) CountAll() (int64, error) {
@@ -24,11 +27,17 @@ func (repo *MemTickerRepo) CountAll() (int64, error) {
 }
 
 func (repo *MemTickerRepo) InsertOne(ticker *model.Ticker) error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	repo.data[ticker.Symbol] = ticker
 	return nil
 }
 
 func (repo *MemTickerRepo) InsertMany(data []*model.Ticker) error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	for _, ticker := range data {
 		repo.data[ticker.Symbol] = ticker
 	}
@@ -36,6 +45,9 @@ func (repo *MemTickerRepo) InsertMany(data []*model.Ticker) error {
 }
 
 func (repo *MemTickerRepo) DropAndCreate() error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	repo.data = make(map[string]*model.Ticker)
 	return nil
 }

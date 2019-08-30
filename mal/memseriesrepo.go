@@ -3,11 +3,13 @@ package mal
 import (
 	"fmt"
 	"go-market-patterns/model"
+	"sync"
 )
 
 type MemSeriesRepo struct {
 	// map of series' symbol to a series pointer
-	data map[string][]*model.Series
+	data  map[string][]*model.Series
+	mutex *sync.Mutex
 }
 
 func NewMemSeriesRepo() *MemSeriesRepo {
@@ -16,6 +18,7 @@ func NewMemSeriesRepo() *MemSeriesRepo {
 
 func (repo *MemSeriesRepo) Init() {
 	repo.data = make(map[string][]*model.Series)
+	repo.mutex = &sync.Mutex{}
 }
 
 func (repo *MemSeriesRepo) FindBySymbol(symbol string) ([]*model.Series, error) {
@@ -23,6 +26,9 @@ func (repo *MemSeriesRepo) FindBySymbol(symbol string) ([]*model.Series, error) 
 }
 
 func (repo *MemSeriesRepo) InsertOne(data *model.Series) error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	for _, series := range repo.data[data.Symbol] {
 		if series.Length == data.Length {
 			return fmt.Errorf("series with length %v already exists", series.Length)
@@ -35,6 +41,8 @@ func (repo *MemSeriesRepo) InsertOne(data *model.Series) error {
 }
 
 func (repo *MemSeriesRepo) DeleteOne(data *model.Series) error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
 
 	seriesAry := repo.data[data.Symbol]
 	removeIdx := -1
@@ -53,6 +61,9 @@ func (repo *MemSeriesRepo) DeleteOne(data *model.Series) error {
 }
 
 func (repo *MemSeriesRepo) DeleteByLength(length int) error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	for _, ary := range repo.data {
 		for idx, series := range ary {
 			if series.Length == length {
@@ -66,6 +77,9 @@ func (repo *MemSeriesRepo) DeleteByLength(length int) error {
 }
 
 func (repo *MemSeriesRepo) DropAndCreate() error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	repo.data = make(map[string][]*model.Series)
 	return nil
 }

@@ -4,11 +4,13 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go-market-patterns/model"
 	"sort"
+	"sync"
 	"time"
 )
 
 type MemPeriodRepo struct {
-	data map[string]map[time.Time]*model.Period
+	data  map[string]map[time.Time]*model.Period
+	mutex *sync.Mutex
 }
 
 func NewMemPeriodRepo() *MemPeriodRepo {
@@ -17,9 +19,13 @@ func NewMemPeriodRepo() *MemPeriodRepo {
 
 func (repo *MemPeriodRepo) Init() {
 	repo.data = make(map[string]map[time.Time]*model.Period)
+	repo.mutex = &sync.Mutex{}
 }
 
 func (repo *MemPeriodRepo) InsertMany(data []*model.Period) (int, error) {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	count := 0
 	for _, period := range data {
 		if symbolMap, found := repo.data[period.Symbol]; found {
@@ -35,6 +41,7 @@ func (repo *MemPeriodRepo) InsertMany(data []*model.Period) (int, error) {
 			// Symbol not in map, so create it
 			repo.data[period.Symbol] = make(map[time.Time]*model.Period)
 			repo.data[period.Symbol][period.Date] = period
+			count++
 		}
 	}
 
@@ -42,6 +49,9 @@ func (repo *MemPeriodRepo) InsertMany(data []*model.Period) (int, error) {
 }
 
 func (repo *MemPeriodRepo) DropAndCreate() error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	repo.data = make(map[string]map[time.Time]*model.Period)
 	return nil
 }

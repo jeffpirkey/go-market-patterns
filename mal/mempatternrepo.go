@@ -4,10 +4,12 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"go-market-patterns/model"
+	"sync"
 )
 
 type MemPatternRepo struct {
-	data map[string]map[string]map[int]*model.Pattern
+	data  map[string]map[string]map[int]*model.Pattern
+	mutex *sync.Mutex
 }
 
 func NewMemPatternRepo() *MemPatternRepo {
@@ -16,9 +18,13 @@ func NewMemPatternRepo() *MemPatternRepo {
 
 func (repo *MemPatternRepo) Init() {
 	repo.data = make(map[string]map[string]map[int]*model.Pattern)
+	repo.mutex = &sync.Mutex{}
 }
 
 func (repo *MemPatternRepo) InsertMany(data []*model.Pattern) (int, error) {
+
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
 
 	count := 0
 	for _, pattern := range data {
@@ -51,6 +57,9 @@ func (repo *MemPatternRepo) DeleteByLength(length int) error {
 }
 
 func (repo *MemPatternRepo) DropAndCreate() error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+
 	repo.data = make(map[string]map[string]map[int]*model.Pattern)
 	return nil
 }

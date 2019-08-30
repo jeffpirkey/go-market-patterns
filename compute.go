@@ -104,7 +104,7 @@ func computeSeries(computeLength int, symbol string, periods []*model.Period) {
 		var pattern *model.Pattern
 		pattern, found := patternMap[patName]
 		if !found {
-			pattern = &model.Pattern{Symbol: symbol, Value: patName}
+			pattern = &model.Pattern{Symbol: symbol, Value: patName, Length: computeLength}
 			patternMap[patName] = pattern
 		}
 

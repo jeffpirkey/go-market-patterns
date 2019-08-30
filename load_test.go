@@ -21,7 +21,7 @@ func TestLoadCsvTestSuite(t *testing.T) {
 }
 
 func (suite *LoadCsvTestSuite) SetupSuite() {
-	conf := config.Init("runtime-config-test.yaml")
+	conf := config.Init()
 	Repos = mal.New(conf)
 }
 
@@ -55,12 +55,12 @@ func (suite *LoadCsvTestSuite) TestLoadBadUrl() {
 }
 
 func (suite *LoadCsvTestSuite) TestLoadEmptyDataFile() {
-	err := load("data/test/empty.txt", testCompanyFile, 3)
+	err := load("data/test-exceptions/empty.txt", testCompanyFile, 3)
 	assert.Error(suite.T(), err)
 }
 
 func (suite *LoadCsvTestSuite) TestLoadEmptyCompanyFile() {
-	_, err := loadCompanies("data/test/empty.txt")
+	_, err := loadCompanies("data/test-exceptions/empty.txt")
 	assert.Error(suite.T(), err)
 }
 

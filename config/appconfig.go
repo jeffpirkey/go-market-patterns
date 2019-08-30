@@ -2,10 +2,7 @@ package config
 
 import (
 	"github.com/namsral/flag"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 )
 
 type AppConfig struct {
@@ -42,22 +39,21 @@ var (
 	config      = &AppConfig{}
 )
 
-func Init(fileName string) *AppConfig {
+func Init() *AppConfig {
 
 	if initialized {
 		return config
 	}
 
-	data, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		log.Fatalf("unable to load app configuration due to %v", err)
-	}
-
-	err = yaml.Unmarshal([]byte(data), &config)
-	if err != nil {
-		log.Fatal(errors.Wrapf(err, "unable to process %v due to %v", fileName))
-	}
-
+	// Runtime properties
+	flag.StringVar(&config.Runtime.DbConnect, "db-connect", "memory",
+		"the db connection protocol, defaults to memory")
+	flag.StringVar(&config.Runtime.MongoDbName, "mongo-db-name", "marketPatterns",
+		"the database name to use in mongo, defaults to marketPatterns")
+	flag.StringVar(&config.Runtime.LogLevel, "log-level", "DEBUG",
+		"the logging level, defaults to DEBUG")
+	flag.StringVar(&config.Runtime.HttpServerUrl, "http-server-url", ":8081",
+		"the http server url, defaults to :8081")
 	// Optional properties
 	flag.BoolVar(&config.Options.StartHttpServer, "start-http-server", true,
 		"start the http server, defaults to true")

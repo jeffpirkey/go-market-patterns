@@ -19,7 +19,7 @@ func TestTrainTestSuite(t *testing.T) {
 }
 
 func (suite *TrainTestSuite) SetupSuite() {
-	conf := config.Init("runtime-config-test.yaml")
+	conf := config.Init()
 	Repos = mal.New(conf)
 }
 

@@ -63,8 +63,12 @@ func (repo *MongoPeriodRepo) InsertMany(data []*model.Period) (int, error) {
 		dataAry[i] = v
 	}
 	result, err := repo.c.InsertMany(context.TODO(), dataAry)
+	insertIds := 0
+	if result != nil {
+		insertIds = len(result.InsertedIDs)
+	}
 	if err != nil {
-		return len(result.InsertedIDs), errors.Wrap(err, "problem inserting many periods")
+		return insertIds, errors.Wrap(err, "problem inserting many periods")
 	}
 	return len(result.InsertedIDs), nil
 }

@@ -18,7 +18,7 @@ func TestPatternRepoTestSuite(t *testing.T) {
 }
 
 func (suite *PatternRepoTestSuite) SetupSuite() {
-	conf := config.Init("runtime-config-test.yaml")
+	conf := config.Init()
 	Repos = mal.New(conf)
 }
 

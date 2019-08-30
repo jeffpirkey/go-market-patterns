@@ -73,22 +73,24 @@ func (repos *Repos) Init(config *config.AppConfig) {
 
 		coll := client.Database(config.Runtime.DbConnect).Collection("tickers")
 		repos.TickerRepo = NewMongoTickerRepo(coll)
-		repos.TickerRepo.Init()
 
 		coll = client.Database(config.Runtime.DbConnect).Collection("patterns")
 		repos.PatternRepo = NewMongoPatternRepo(coll)
-		repos.PatternRepo.Init()
 
 		coll = client.Database(config.Runtime.DbConnect).Collection("periods")
 		repos.PeriodRepo = NewMongoPeriodRepo(coll)
-		repos.PeriodRepo.Init()
 
 		coll = client.Database(config.Runtime.DbConnect).Collection("series")
 		repos.SeriesRepo = NewMongoSeriesRepo(coll)
-		repos.SeriesRepo.Init()
+
 	} else {
 		log.Fatalf("unrecognized db protocol '%v'", config.Runtime.DbConnect)
 	}
+
+	repos.TickerRepo.Init()
+	repos.PatternRepo.Init()
+	repos.PeriodRepo.Init()
+	repos.SeriesRepo.Init()
 
 	repos.GraphController = &GraphController{repos.PeriodRepo, repos.PatternRepo}
 
@@ -100,10 +102,18 @@ func (repos *Repos) DropAll(t *testing.T) {
 		log.Errorf("only able to delete databases when in test mode")
 		return
 	}
-	db := client.Database(repos.config.Runtime.DbConnect)
-	err := db.Drop(context.TODO())
-	if err != nil {
-		log.Errorf("unable to drop database %v due to %v", repos.config.Runtime.DbConnect, err)
+
+	if strings.HasPrefix(repos.config.Runtime.DbConnect, "memory") {
+		repos.PatternRepo.DropAndCreate()
+		repos.PeriodRepo.DropAndCreate()
+		repos.SeriesRepo.DropAndCreate()
+		repos.TickerRepo.DropAndCreate()
+	} else if strings.HasPrefix(repos.config.Runtime.DbConnect, "mongo") {
+		db := client.Database(repos.config.Runtime.DbConnect)
+		err := db.Drop(context.TODO())
+		if err != nil {
+			log.Errorf("unable to drop database %v due to %v", repos.config.Runtime.DbConnect, err)
+		}
 	}
 }
 
