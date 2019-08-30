@@ -3,9 +3,9 @@ package main
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"market-patterns/config"
-	"market-patterns/mal"
-	"market-patterns/model"
+	"go-market-patterns/config"
+	"go-market-patterns/mal"
+	"go-market-patterns/model"
 	"testing"
 )
 

@@ -1,6 +1,6 @@
 package report
 
-import "market-patterns/model"
+import "go-market-patterns/model"
 
 type ProbabilityEdges struct {
 	BestUpHigh       *model.Pattern

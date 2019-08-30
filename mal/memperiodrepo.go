@@ -2,7 +2,7 @@ package mal
 
 import (
 	log "github.com/sirupsen/logrus"
-	"market-patterns/model"
+	"go-market-patterns/model"
 	"sort"
 	"time"
 )

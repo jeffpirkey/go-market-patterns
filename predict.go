@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"market-patterns/mal"
-	"market-patterns/model"
-	"market-patterns/model/report"
+	"go-market-patterns/mal"
+	"go-market-patterns/model"
+	"go-market-patterns/model/report"
 	"strings"
 	"time"
 )

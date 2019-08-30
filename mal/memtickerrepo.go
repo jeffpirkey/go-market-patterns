@@ -2,8 +2,8 @@ package mal
 
 import (
 	"fmt"
-	"market-patterns/model"
-	"market-patterns/model/report"
+	"go-market-patterns/model"
+	"go-market-patterns/model/report"
 )
 
 type MemTickerRepo struct {

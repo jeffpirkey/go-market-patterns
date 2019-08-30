@@ -5,8 +5,8 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"market-patterns/mal"
-	"market-patterns/model"
+	"go-market-patterns/mal"
+	"go-market-patterns/model"
 	"strconv"
 	"sync"
 )

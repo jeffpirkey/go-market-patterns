@@ -3,8 +3,8 @@ package tools
 import (
 	"fmt"
 	"github.com/pkg/errors"
-	"market-patterns/mal"
-	"market-patterns/model"
+	"go-market-patterns/mal"
+	"go-market-patterns/model"
 	"os"
 	"sort"
 	"strings"

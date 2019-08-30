@@ -2,7 +2,7 @@ package mal
 
 import (
 	"fmt"
-	"market-patterns/model"
+	"go-market-patterns/model"
 )
 
 type MemSeriesRepo struct {

@@ -4,8 +4,8 @@ import (
 	"encoding/csv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"market-patterns/config"
-	"market-patterns/mal"
+	"go-market-patterns/config"
+	"go-market-patterns/mal"
 	"strings"
 	"testing"
 )

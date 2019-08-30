@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"market-patterns/config"
-	"market-patterns/mal"
+	"go-market-patterns/config"
+	"go-market-patterns/mal"
 	"testing"
 )
 

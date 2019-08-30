@@ -1,7 +1,7 @@
 package mal
 
 import (
-	"market-patterns/model/graph"
+	"go-market-patterns/model/graph"
 	"strings"
 )
 

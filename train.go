@@ -1,7 +1,7 @@
 package main
 
 import (
-	"market-patterns/model"
+	"go-market-patterns/model"
 	"sync"
 )
 
