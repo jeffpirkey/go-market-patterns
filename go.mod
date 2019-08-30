@@ -1,4 +1,4 @@
-module market-patterns
+module go-market-patterns
 
 go 1.12
 
