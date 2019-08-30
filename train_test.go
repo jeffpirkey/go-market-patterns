@@ -36,7 +36,7 @@ func (suite *TrainTestSuite) TestTrainAllDaily() {
 	r := csv.NewReader(strings.NewReader(testInputData))
 	r.TrimLeadingSpace = true
 
-	err := loadAndTrainData("test", "test compnay", r, 3)
+	err := loadAndTrainData("test", "test compnay", r, []int{3})
 	assert.NoError(suite.T(), err)
 
 	/*

@@ -27,7 +27,7 @@ func (suite *MainTestSuite) TearDownTest() {
 
 func (suite *MainTestSuite) TestTruncLoadFile() {
 
-	err := truncAndLoad(testIbmFile, testCompanyFile, 3)
+	err := truncAndLoad(testIbmFile, testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"
@@ -50,7 +50,7 @@ func (suite *MainTestSuite) TestTruncLoadFile() {
 
 func (suite *LoadCsvTestSuite) TestTruncLoadDir() {
 
-	err := truncAndLoad("data/test/", testCompanyFile, 3)
+	err := truncAndLoad("data/test/", testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"
@@ -73,7 +73,7 @@ func (suite *LoadCsvTestSuite) TestTruncLoadDir() {
 
 func (suite *LoadCsvTestSuite) TestTruncLoadZipArchive() {
 
-	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, 3)
+	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
 
 	symbol := "IBM"

@@ -28,7 +28,7 @@ func (suite *PatternRepoTestSuite) TearDownTest() {
 
 func (suite *PatternRepoTestSuite) TestHighestUp() {
 
-	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, 3)
+	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
 	pattern, err := Repos.PatternRepo.FindHighestUpProbability(model.PatternDensityLow)
 	assert.NoError(suite.T(), err)

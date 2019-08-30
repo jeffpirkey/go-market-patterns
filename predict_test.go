@@ -31,7 +31,7 @@ func (suite *PredictTestSuite) TestPredict() {
 
 	r := csv.NewReader(strings.NewReader(testInputData))
 	r.TrimLeadingSpace = true
-	err := loadAndTrainData("test", "test company", r, 3)
+	err := loadAndTrainData("test", "test company", r, []int{3})
 	assert.NoError(suite.T(), err)
 	prediction, err := predict("test")
 	assert.NoError(suite.T(), err)

@@ -36,6 +36,6 @@ func (suite *ComputeTestSuite) TestComputeSeries() {
 	r := csv.NewReader(strings.NewReader(testInputData))
 	r.TrimLeadingSpace = true
 
-	err := loadAndTrainData("test", "test company", r, 3)
+	err := loadAndTrainData("test", "test company", r, []int{3})
 	assert.NoError(suite.T(), err)
 }
