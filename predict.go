@@ -33,7 +33,7 @@ func predict(symbol string) (report.Prediction, error) {
 
 	for _, s := range series {
 
-		log.Infof("Processing prediction for %v the series of %v...", symbol, s.Name)
+		log.Infof("Processing prediction for %v with series %v...", symbol, s.Name)
 
 		lastPeriods := slice.LastByRange(s.Length)
 		var match string

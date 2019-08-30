@@ -10,6 +10,6 @@ type PatternDensity struct {
 
 type PatternDensityGraph struct {
 	Symbol      string          `json:"symbol"`
-	CompanyName string          `json:"symbol"`
+	CompanyName string          `json:"companyName"`
 	Graph       *PatternDensity `json:"graphData"`
 }
