@@ -71,16 +71,16 @@ func (repos *Repos) Init(config *config.AppConfig) {
 			log.Fatalf("unable to ping mongodb at %v due to %v", config.Runtime.DbConnect, err)
 		}
 
-		coll := client.Database(config.Runtime.DbConnect).Collection("tickers")
+		coll := client.Database(config.Runtime.MongoDbName).Collection("tickers")
 		repos.TickerRepo = NewMongoTickerRepo(coll)
 
-		coll = client.Database(config.Runtime.DbConnect).Collection("patterns")
+		coll = client.Database(config.Runtime.MongoDbName).Collection("patterns")
 		repos.PatternRepo = NewMongoPatternRepo(coll)
 
-		coll = client.Database(config.Runtime.DbConnect).Collection("periods")
+		coll = client.Database(config.Runtime.MongoDbName).Collection("periods")
 		repos.PeriodRepo = NewMongoPeriodRepo(coll)
 
-		coll = client.Database(config.Runtime.DbConnect).Collection("series")
+		coll = client.Database(config.Runtime.MongoDbName).Collection("series")
 		repos.SeriesRepo = NewMongoSeriesRepo(coll)
 
 	} else {
