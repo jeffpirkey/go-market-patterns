@@ -1,7 +1,7 @@
 package main
 
 import (
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"sync"
 )
 
@@ -11,7 +11,7 @@ import (
 
 // Trains the day-to-day results for the given tickers and period arrays.  It is assumed that there are
 // at least 2 periods for each ticker.
-func trainAllDaily(dataMap map[*model.Ticker][]*model.Period) {
+func trainAllDaily(dataMap map[*core.Ticker][]*core.Period) {
 
 	wg := sync.WaitGroup{}
 	semaphore := make(chan struct{}, 100)
@@ -32,17 +32,17 @@ func trainAllDaily(dataMap map[*model.Ticker][]*model.Period) {
 }
 
 // Trains a range of periods.  Periods array should be sorted ascending.
-func trainDaily(periods []*model.Period) {
+func trainDaily(periods []*core.Period) {
 
 	// Train the day-to-day results between
 	// two consecutive periods across our period slice
-	var prev *model.Period
+	var prev *core.Period
 	for i, period := range periods {
 
 		// Set the first index to prev and skip,
 		// as we can't compare it to anything
 		if i == 0 {
-			period.DailyResult = model.NotDefined
+			period.DailyResult = core.NotDefined
 			prev = period
 			continue
 		}
@@ -53,7 +53,7 @@ func trainDaily(periods []*model.Period) {
 			continue
 		}
 
-		seqResult := model.Calc(prev.Close, period.Close)
+		seqResult := core.Calc(prev.Close, period.Close)
 		period.DailyResult = seqResult
 		// This period become the previous period
 		prev = period

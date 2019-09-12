@@ -1,17 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"go-market-patterns/config"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"go-market-patterns/model/graph"
 	"go-market-patterns/model/report"
 	"net/http"
 	_ "net/http/pprof"
-	"sort"
+	"strconv"
 )
 
 func startProfile() {
@@ -25,13 +26,13 @@ func start(conf *config.AppConfig) {
 	router.Use(static.Serve("/", static.LocalFile("./ui/build", true)))
 
 	apiLatest := router.Group("/api/latest")
-	apiLatest.GET("/predict/:id", handlePredict)
+	apiLatest.GET("/predict/:symbol", handlePredict)
 	apiLatest.GET("/tickers", handleTickers)
-	apiLatest.GET("/series/:id", handleSeries)
+	apiLatest.GET("/series/:symbol", handleSeries)
 	apiLatest.GET("/symbols", handleSymbols)
 	apiLatest.GET("/edge-probabilities/:density", handleEdgeProbabilities)
-	apiLatest.GET("/graph/pattern-density/:id", handlePatternDensity)
-	apiLatest.GET("/graph/stock/:id", handlePeriodCloseSeries)
+	apiLatest.GET("/graph/pattern-density/:symbol", handlePatternDensity)
+	apiLatest.GET("/graph/stock/:symbol", handlePeriodCloseSeries)
 
 	log.Info("market-pattern server listening...")
 
@@ -40,12 +41,18 @@ func start(conf *config.AppConfig) {
 
 func handlePredict(ctx *gin.Context) {
 
-	id := ctx.Param("id")
-	if id == "undefined" {
-		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no 'id' path parameter defined"))
+	id := ctx.Param("symbol")
+	if id == "undefined" || id == "" {
+		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no 'symbol' path parameter defined"))
+	}
+	lengthParam := ctx.Query("length")
+	length, err := strconv.Atoi(lengthParam)
+	if err != nil || length <= 0 {
+		_ = ctx.AbortWithError(http.StatusBadRequest,
+			fmt.Errorf("length parameter '%v' is not a valid parameter", lengthParam))
 	}
 
-	prediction, err := predict(id)
+	prediction, err := predictOne(id, length)
 	if err != nil {
 		_ = ctx.AbortWithError(http.StatusBadRequest, err)
 	}
@@ -54,9 +61,9 @@ func handlePredict(ctx *gin.Context) {
 
 func handlePeriodCloseSeries(ctx *gin.Context) {
 
-	id := ctx.Param("id")
-	if id == "undefined" {
-		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no 'id' path parameter defined"))
+	id := ctx.Param("symbol")
+	if id == "undefined" || id == "" {
+		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no 'symbol' path parameter defined"))
 	}
 
 	series, err := Repos.GraphController.FindPeriodCloseSeries(id)
@@ -67,45 +74,46 @@ func handlePeriodCloseSeries(ctx *gin.Context) {
 }
 
 func handleTickers(ctx *gin.Context) {
-	tickerNames := report.TickerNames{Names: Repos.TickerRepo.FindSymbolsAndCompany()}
+	tickerNames := report.Tickers{Tickers: Repos.TickerRepo.FindSymbolCompanySliceSortAsc()}
 	ctx.JSON(http.StatusOK, tickerNames)
 }
 
 func handleSymbols(ctx *gin.Context) {
-	tickerNames := report.SymbolNames{Names: Repos.TickerRepo.FindSymbols()}
+	tickerNames := report.TickerSymbolNames{Names: Repos.TickerRepo.FindSymbols()}
 	ctx.JSON(http.StatusOK, tickerNames)
 }
 
 func handleSeries(ctx *gin.Context) {
 
-	id := ctx.Param("id")
-	if id == "undefined" {
-		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no 'id' path parameter defined"))
+	id := ctx.Param("symbol")
+	if id == "undefined" || id == "" {
+		_ = ctx.AbortWithError(http.StatusBadRequest,
+			errors.New("no 'symbol' path parameter defined"))
 	}
 
-	series, err := Repos.SeriesRepo.FindBySymbol(id)
-	if err != nil {
-		_ = ctx.AbortWithError(http.StatusInternalServerError, errors.Wrap(err, "problem access Series data"))
+	data := Repos.SeriesRepo.FindNameLengthSliceBySymbol(id)
+	if data == nil {
+		_ = ctx.AbortWithError(http.StatusNotExtended,
+			fmt.Errorf("series with symbol '%v' not found", id))
 	}
-
-	seriesAry := make([]string, len(series))
-	for idx, val := range series {
-		seriesAry[idx] = val.Name
-	}
-
-	sort.Strings(seriesAry)
-	data := report.SeriesNames{Names: seriesAry}
-	ctx.JSON(http.StatusOK, data)
+	ctx.JSON(http.StatusOK, report.Series{Series: data})
 }
 
 func handlePatternDensity(ctx *gin.Context) {
 
-	id := ctx.Param("id")
-	if id == "undefined" {
-		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no 'id' path parameter defined"))
+	id := ctx.Param("symbol")
+	if id == "undefined" || id == "" {
+		_ = ctx.AbortWithError(http.StatusBadRequest,
+			errors.New("no 'symbol' path parameter defined"))
 	}
 
-	data, err := Repos.GraphController.FindPatternDensities(id)
+	lengthParam := ctx.Query("length")
+	length, err := strconv.Atoi(lengthParam)
+	if err != nil || length <= 0 {
+		_ = ctx.AbortWithError(http.StatusBadRequest,
+			fmt.Errorf("length parameter '%v' is not a valid parameter", lengthParam))
+	}
+	data, err := Repos.GraphController.FindPatternDensities(id, length)
 	if err != nil {
 		_ = ctx.AbortWithError(http.StatusNotFound, err)
 	}
@@ -123,13 +131,15 @@ func handlePatternDensity(ctx *gin.Context) {
 func handleEdgeProbabilities(ctx *gin.Context) {
 
 	densityStr := ctx.Param("density")
-	if densityStr == "undefined" {
-		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("no 'density' path parameter defined"))
+	if densityStr == "undefined" || densityStr == "" {
+		_ = ctx.AbortWithError(http.StatusBadRequest,
+			errors.New("no 'density' path parameter defined"))
 	}
 
-	density, err := model.PatternDensityFromString(densityStr)
+	density, err := core.PatternDensityFromString(densityStr)
 	if err != nil {
-		_ = ctx.AbortWithError(http.StatusBadRequest, errors.New("invalid 'density' path parameter"))
+		_ = ctx.AbortWithError(http.StatusBadRequest,
+			errors.New("invalid 'density' path parameter"))
 	}
 
 	upHighProd, err := Repos.PatternRepo.FindHighestUpProbability(density)

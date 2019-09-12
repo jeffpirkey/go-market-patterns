@@ -5,7 +5,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -31,7 +31,7 @@ func NewMongoPeriodRepo(c *mongo.Collection) *MongoPeriodRepo {
 
 func (repo *MongoPeriodRepo) Init() {
 
-	created, err := CreateCollection(repo.c, model.Period{})
+	created, err := CreateCollection(repo.c, core.Period{})
 	if err != nil {
 		log.WithError(err).Fatal("Unable to continue initializing MongoPeriodRepo")
 	}
@@ -56,7 +56,7 @@ func (repo *MongoPeriodRepo) Init() {
 //   Insert functions
 // *********************************************************
 
-func (repo *MongoPeriodRepo) InsertMany(data []*model.Period) (int, error) {
+func (repo *MongoPeriodRepo) InsertMany(data []*core.Period) (int, error) {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
@@ -90,10 +90,10 @@ func (repo *MongoPeriodRepo) DropAndCreate() error {
 //   Find functions
 // *********************************************************
 
-func (repo *MongoPeriodRepo) FindOneAndReplace(data *model.Period) *model.Period {
+func (repo *MongoPeriodRepo) FindOneAndReplace(data *core.Period) *core.Period {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
-	var update model.Period
+	var update core.Period
 	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, ReplaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
@@ -101,10 +101,10 @@ func (repo *MongoPeriodRepo) FindOneAndReplace(data *model.Period) *model.Period
 	return &update
 }
 
-func (repo MongoPeriodRepo) FindAndReplace(data *model.Period) *model.Period {
+func (repo MongoPeriodRepo) FindAndReplace(data *core.Period) *core.Period {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
-	var update model.Period
+	var update core.Period
 	err := repo.c.FindOneAndReplace(context.TODO(), filter, data, ReplaceOpt).Decode(&update)
 	if err != nil {
 		log.Warnf("problem replacing pattern due to %v", err)
@@ -112,11 +112,11 @@ func (repo MongoPeriodRepo) FindAndReplace(data *model.Period) *model.Period {
 	return &update
 }
 
-func (repo *MongoPeriodRepo) FindOneAndUpdateDailyResult(data *model.Period) (*model.Period, error) {
+func (repo *MongoPeriodRepo) FindOneAndUpdateDailyResult(data *core.Period) (*core.Period, error) {
 
 	filter := bson.D{{"symbol", data.Symbol}, {"date", data.Date}}
 	update := bson.D{{"$set", bson.D{{"dailyResult", data.DailyResult}}}}
-	var doc model.Period
+	var doc core.Period
 	err := repo.c.FindOneAndUpdate(context.TODO(), filter, data, UpdateOpt).Decode(&update)
 	if err != nil {
 		return &doc, errors.Wrap(err, "problem updating period daily result")
@@ -124,7 +124,7 @@ func (repo *MongoPeriodRepo) FindOneAndUpdateDailyResult(data *model.Period) (*m
 	return &doc, nil
 }
 
-func (repo *MongoPeriodRepo) FindBySymbol(symbol string, sortDir SortDirection) (model.PeriodSlice, error) {
+func (repo *MongoPeriodRepo) FindBySymbol(symbol string, sortDir SortDirection) (core.PeriodSlice, error) {
 
 	opts := &options.FindOptions{}
 	if sortDir == SortAsc {
@@ -137,7 +137,7 @@ func (repo *MongoPeriodRepo) FindBySymbol(symbol string, sortDir SortDirection) 
 	}
 
 	filter := bson.D{{"symbol", symbol}}
-	var findData model.PeriodSlice
+	var findData core.PeriodSlice
 	cur, err := repo.c.Find(context.TODO(), filter, opts)
 	if err != nil {
 		return findData, errors.Wrap(err, "unable to find by symbol")
@@ -146,7 +146,7 @@ func (repo *MongoPeriodRepo) FindBySymbol(symbol string, sortDir SortDirection) 
 	var results error
 
 	for cur.Next(context.TODO()) {
-		var doc model.Period
+		var doc core.Period
 		err = cur.Decode(&doc)
 		if err != nil {
 			results = multierror.Append(results, err)
@@ -157,11 +157,11 @@ func (repo *MongoPeriodRepo) FindBySymbol(symbol string, sortDir SortDirection) 
 	return findData, results
 }
 
-func (repo *MongoPeriodRepo) FindOneBySymbolAndValue(symbol, value string) (*model.Period, error) {
+func (repo *MongoPeriodRepo) FindOneBySymbolAndValue(symbol, value string) (*core.Period, error) {
 
 	filter := bson.D{{"symbol", symbol}, {"value", value}}
 
-	var findData model.Period
+	var findData core.Period
 	err := repo.c.FindOne(context.TODO(), filter).Decode(&findData)
 	if err != nil {
 		return &findData, errors.Wrapf(err, "unable to find pattern by symbol '%v' and value '%v", symbol, value)

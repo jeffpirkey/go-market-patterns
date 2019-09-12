@@ -1,11 +1,11 @@
 package report
 
-type SymbolNames struct {
+type TickerSymbolNames struct {
 	Names []string `json:"names"`
 }
 
-type TickerNames struct {
-	Names *TickerSymbolCompanySlice `json:"names"`
+type Tickers struct {
+	Tickers *TickerSymbolCompanySlice `json:"tickers"`
 }
 
 type TickerSymbolCompany struct {
@@ -13,7 +13,7 @@ type TickerSymbolCompany struct {
 	Company string `json:"company"`
 }
 
-// Slice of Periods used for sorting and other access methods
+// Slice of Ticker Symbols and Company Names used for sorting and other access methods
 type TickerSymbolCompanySlice []*TickerSymbolCompany
 
 // *********************************************************

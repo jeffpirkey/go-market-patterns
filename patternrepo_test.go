@@ -5,7 +5,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go-market-patterns/config"
 	"go-market-patterns/mal"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"testing"
 )
 
@@ -30,7 +30,7 @@ func (suite *PatternRepoTestSuite) TestHighestUp() {
 
 	err := truncAndLoad("data/test/stocks-test.zip", testCompanyFile, []int{3})
 	assert.NoError(suite.T(), err)
-	pattern, err := Repos.PatternRepo.FindHighestUpProbability(model.PatternDensityLow)
+	pattern, err := Repos.PatternRepo.FindHighestUpProbability(core.PatternDensityLow)
 	assert.NoError(suite.T(), err)
 	assert.NotEmpty(suite.T(), pattern)
 }

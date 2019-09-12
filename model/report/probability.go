@@ -1,12 +1,14 @@
 package report
 
-import "go-market-patterns/model"
+import (
+	"go-market-patterns/model/core"
+)
 
 type ProbabilityEdges struct {
-	BestUpHigh       *model.Pattern
-	BestDownHigh     *model.Pattern
-	BestNoChangeHigh *model.Pattern
-	BestUpLow        *model.Pattern
-	BestDownLow      *model.Pattern
-	BestNoChangeLow  *model.Pattern
+	BestUpHigh       *core.Pattern `json:"bestUpHigh"`
+	BestDownHigh     *core.Pattern `json:"bestDownHigh"`
+	BestNoChangeHigh *core.Pattern `json:"bestNoChangeHigh"`
+	BestUpLow        *core.Pattern `json:"bestUpLow"`
+	BestDownLow      *core.Pattern `json:"bestDownLow"`
+	BestNoChangeLow  *core.Pattern `json:"bestNoChangeLow"`
 }

@@ -44,6 +44,10 @@
     justify-content: flex-start;
 }
 
+.fill-horizontal {
+    width: 100%;
+}
+
 .font-title {
     font-size: calc(10px + 2vmin);
     color: white;
@@ -63,12 +67,12 @@
 
 .font-default-text {
     color: white;
-    font-size: calc(10px + 1vmin);
+    font-size: calc(8px + 1vmin);
 }
 
 .font-text-small {
     color: white;
-    font-size: calc(8px + 1vmin);
+    font-size: calc(6px + 1vmin);
 }
 
 .margin-all {
@@ -139,4 +143,8 @@ option:hover {
 select:focus option {
     position: relative;
     pointer-events: all;
+}
+
+.underline {
+    text-decoration: underline;
 }

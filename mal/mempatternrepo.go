@@ -3,12 +3,12 @@ package mal
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"sync"
 )
 
 type MemPatternRepo struct {
-	data  map[string]map[string]map[int]*model.Pattern
+	data  map[string]map[string]map[int]*core.Pattern
 	mutex *sync.Mutex
 }
 
@@ -17,11 +17,11 @@ func NewMemPatternRepo() *MemPatternRepo {
 }
 
 func (repo *MemPatternRepo) Init() {
-	repo.data = make(map[string]map[string]map[int]*model.Pattern)
+	repo.data = make(map[string]map[string]map[int]*core.Pattern)
 	repo.mutex = &sync.Mutex{}
 }
 
-func (repo *MemPatternRepo) InsertMany(data []*model.Pattern) (int, error) {
+func (repo *MemPatternRepo) InsertMany(data []*core.Pattern) (int, error) {
 
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
@@ -29,13 +29,13 @@ func (repo *MemPatternRepo) InsertMany(data []*model.Pattern) (int, error) {
 	count := 0
 	for _, pattern := range data {
 		if symbolMap, found := repo.data[pattern.Symbol]; !found {
-			repo.data[pattern.Symbol] = make(map[string]map[int]*model.Pattern)
-			repo.data[pattern.Symbol][pattern.Value] = make(map[int]*model.Pattern)
+			repo.data[pattern.Symbol] = make(map[string]map[int]*core.Pattern)
+			repo.data[pattern.Symbol][pattern.Value] = make(map[int]*core.Pattern)
 			repo.data[pattern.Symbol][pattern.Value][pattern.Length] = pattern
 			count++
 		} else {
 			if valueMap, found := symbolMap[pattern.Value]; !found {
-				repo.data[pattern.Symbol][pattern.Value] = make(map[int]*model.Pattern)
+				repo.data[pattern.Symbol][pattern.Value] = make(map[int]*core.Pattern)
 				repo.data[pattern.Symbol][pattern.Value][pattern.Length] = pattern
 				count++
 			} else {
@@ -60,12 +60,12 @@ func (repo *MemPatternRepo) DropAndCreate() error {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
-	repo.data = make(map[string]map[string]map[int]*model.Pattern)
+	repo.data = make(map[string]map[string]map[int]*core.Pattern)
 	return nil
 }
 
-func (repo *MemPatternRepo) FindBySymbol(symbol string) ([]*model.Pattern, error) {
-	var patterns []*model.Pattern
+func (repo *MemPatternRepo) FindBySymbol(symbol string) ([]*core.Pattern, error) {
+	var patterns []*core.Pattern
 	if symbolMap, found := repo.data[symbol]; found {
 		for _, valueMap := range symbolMap {
 			for _, pattern := range valueMap {
@@ -73,13 +73,30 @@ func (repo *MemPatternRepo) FindBySymbol(symbol string) ([]*model.Pattern, error
 			}
 		}
 	} else {
-		return patterns, fmt.Errorf("pattern not found for symbol '%v'", symbol)
+		return patterns, fmt.Errorf("patterns not found for symbol '%v'", symbol)
 	}
 
 	return patterns, nil
 }
 
-func (repo *MemPatternRepo) FindOneBySymbolAndValueAndLength(symbol, value string, length int) (*model.Pattern, error) {
+func (repo *MemPatternRepo) FindBySymbolAndLength(symbol string, length int) ([]*core.Pattern, error) {
+	var patterns []*core.Pattern
+	if symbolMap, found := repo.data[symbol]; found {
+		for _, valueMap := range symbolMap {
+			for _, pattern := range valueMap {
+				if pattern.Length == length {
+					patterns = append(patterns, pattern)
+				}
+			}
+		}
+	} else {
+		return patterns, fmt.Errorf("patterns not found for symbol '%v'and length '%v'", length)
+	}
+
+	return patterns, nil
+}
+
+func (repo *MemPatternRepo) FindOneBySymbolAndValueAndLength(symbol, value string, length int) (*core.Pattern, error) {
 
 	if symbolMap, found := repo.data[symbol]; found {
 		if valueMap, found := symbolMap[value]; found {
@@ -93,8 +110,8 @@ func (repo *MemPatternRepo) FindOneBySymbolAndValueAndLength(symbol, value strin
 		fmt.Errorf("pattern not found for symbol '%v', value '%v', and length '%v'", symbol, value, length)
 }
 
-func (repo *MemPatternRepo) FindHighestUpProbability(density model.PatternDensity) (*model.Pattern, error) {
-	var max *model.Pattern
+func (repo *MemPatternRepo) FindHighestUpProbability(density core.PatternDensity) (*core.Pattern, error) {
+	var max *core.Pattern
 	for _, valueMap := range repo.data {
 		for _, lengthMap := range valueMap {
 			for _, pattern := range lengthMap {
@@ -102,15 +119,15 @@ func (repo *MemPatternRepo) FindHighestUpProbability(density model.PatternDensit
 					max = pattern
 				} else {
 					switch density {
-					case model.PatternDensityLow:
+					case core.PatternDensityLow:
 						if pattern.UpCount/pattern.TotalCount > max.UpCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityMedium:
+					case core.PatternDensityMedium:
 						if pattern.TotalCount > 500 && pattern.UpCount/pattern.TotalCount > max.UpCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityHigh:
+					case core.PatternDensityHigh:
 						if pattern.TotalCount > 1000 && pattern.UpCount/pattern.TotalCount > max.UpCount/max.TotalCount {
 							max = pattern
 						}
@@ -123,8 +140,8 @@ func (repo *MemPatternRepo) FindHighestUpProbability(density model.PatternDensit
 	return max, nil
 }
 
-func (repo *MemPatternRepo) FindHighestDownProbability(density model.PatternDensity) (*model.Pattern, error) {
-	var max *model.Pattern
+func (repo *MemPatternRepo) FindHighestDownProbability(density core.PatternDensity) (*core.Pattern, error) {
+	var max *core.Pattern
 	for _, valueMap := range repo.data {
 		for _, lengthMap := range valueMap {
 			for _, pattern := range lengthMap {
@@ -132,15 +149,15 @@ func (repo *MemPatternRepo) FindHighestDownProbability(density model.PatternDens
 					max = pattern
 				} else {
 					switch density {
-					case model.PatternDensityLow:
+					case core.PatternDensityLow:
 						if pattern.UpCount/pattern.TotalCount > max.DownCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityMedium:
+					case core.PatternDensityMedium:
 						if pattern.TotalCount > 500 && pattern.DownCount/pattern.TotalCount > max.DownCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityHigh:
+					case core.PatternDensityHigh:
 						if pattern.TotalCount > 1000 && pattern.DownCount/pattern.TotalCount > max.DownCount/max.TotalCount {
 							max = pattern
 						}
@@ -153,8 +170,8 @@ func (repo *MemPatternRepo) FindHighestDownProbability(density model.PatternDens
 	return max, nil
 }
 
-func (repo *MemPatternRepo) FindHighestNoChangeProbability(density model.PatternDensity) (*model.Pattern, error) {
-	var max *model.Pattern
+func (repo *MemPatternRepo) FindHighestNoChangeProbability(density core.PatternDensity) (*core.Pattern, error) {
+	var max *core.Pattern
 	for _, valueMap := range repo.data {
 		for _, lengthMap := range valueMap {
 			for _, pattern := range lengthMap {
@@ -162,15 +179,15 @@ func (repo *MemPatternRepo) FindHighestNoChangeProbability(density model.Pattern
 					max = pattern
 				} else {
 					switch density {
-					case model.PatternDensityLow:
+					case core.PatternDensityLow:
 						if pattern.UpCount/pattern.TotalCount > max.NoChangeCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityMedium:
+					case core.PatternDensityMedium:
 						if pattern.TotalCount > 500 && pattern.NoChangeCount/pattern.TotalCount > max.NoChangeCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityHigh:
+					case core.PatternDensityHigh:
 						if pattern.TotalCount > 1000 && pattern.NoChangeCount/pattern.TotalCount > max.NoChangeCount/max.TotalCount {
 							max = pattern
 						}
@@ -183,8 +200,8 @@ func (repo *MemPatternRepo) FindHighestNoChangeProbability(density model.Pattern
 	return max, nil
 }
 
-func (repo *MemPatternRepo) FindLowestUpProbability(density model.PatternDensity) (*model.Pattern, error) {
-	var max *model.Pattern
+func (repo *MemPatternRepo) FindLowestUpProbability(density core.PatternDensity) (*core.Pattern, error) {
+	var max *core.Pattern
 	for _, valueMap := range repo.data {
 		for _, lengthMap := range valueMap {
 			for _, pattern := range lengthMap {
@@ -192,15 +209,15 @@ func (repo *MemPatternRepo) FindLowestUpProbability(density model.PatternDensity
 					max = pattern
 				} else {
 					switch density {
-					case model.PatternDensityLow:
+					case core.PatternDensityLow:
 						if pattern.UpCount/pattern.TotalCount < max.UpCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityMedium:
+					case core.PatternDensityMedium:
 						if pattern.TotalCount > 500 && pattern.UpCount/pattern.TotalCount < max.UpCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityHigh:
+					case core.PatternDensityHigh:
 						if pattern.TotalCount > 1000 && pattern.UpCount/pattern.TotalCount < max.UpCount/max.TotalCount {
 							max = pattern
 						}
@@ -214,8 +231,8 @@ func (repo *MemPatternRepo) FindLowestUpProbability(density model.PatternDensity
 
 }
 
-func (repo *MemPatternRepo) FindLowestDownProbability(density model.PatternDensity) (*model.Pattern, error) {
-	var max *model.Pattern
+func (repo *MemPatternRepo) FindLowestDownProbability(density core.PatternDensity) (*core.Pattern, error) {
+	var max *core.Pattern
 	for _, valueMap := range repo.data {
 		for _, lengthMap := range valueMap {
 			for _, pattern := range lengthMap {
@@ -223,15 +240,15 @@ func (repo *MemPatternRepo) FindLowestDownProbability(density model.PatternDensi
 					max = pattern
 				} else {
 					switch density {
-					case model.PatternDensityLow:
+					case core.PatternDensityLow:
 						if pattern.UpCount/pattern.TotalCount < max.DownCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityMedium:
+					case core.PatternDensityMedium:
 						if pattern.TotalCount > 500 && pattern.DownCount/pattern.TotalCount < max.DownCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityHigh:
+					case core.PatternDensityHigh:
 						if pattern.TotalCount > 1000 && pattern.DownCount/pattern.TotalCount < max.DownCount/max.TotalCount {
 							max = pattern
 						}
@@ -244,8 +261,8 @@ func (repo *MemPatternRepo) FindLowestDownProbability(density model.PatternDensi
 	return max, nil
 }
 
-func (repo *MemPatternRepo) FindLowestNoChangeProbability(density model.PatternDensity) (*model.Pattern, error) {
-	var max *model.Pattern
+func (repo *MemPatternRepo) FindLowestNoChangeProbability(density core.PatternDensity) (*core.Pattern, error) {
+	var max *core.Pattern
 	for _, valueMap := range repo.data {
 		for _, lengthMap := range valueMap {
 			for _, pattern := range lengthMap {
@@ -253,15 +270,15 @@ func (repo *MemPatternRepo) FindLowestNoChangeProbability(density model.PatternD
 					max = pattern
 				} else {
 					switch density {
-					case model.PatternDensityLow:
+					case core.PatternDensityLow:
 						if pattern.UpCount/pattern.TotalCount < max.NoChangeCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityMedium:
+					case core.PatternDensityMedium:
 						if pattern.TotalCount > 500 && pattern.NoChangeCount/pattern.TotalCount < max.NoChangeCount/max.TotalCount {
 							max = pattern
 						}
-					case model.PatternDensityHigh:
+					case core.PatternDensityHigh:
 						if pattern.TotalCount > 1000 && pattern.NoChangeCount/pattern.TotalCount < max.NoChangeCount/max.TotalCount {
 							max = pattern
 						}

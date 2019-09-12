@@ -1,39 +1,46 @@
-import React, {Component} from 'react';
+import React from 'react';
 import HighchartsReact from 'highcharts-react-official';
 import Highcharts from 'highcharts/highstock';
 import darkUnica from 'highcharts/themes/dark-unica'
 
 darkUnica(Highcharts);
 
-class StockPriceGraph extends Component {
+class GraphPatternDensity extends React.Component {
 
     componentDidMount() {
         // Initial setup
-        let predictId = this.props.selectedSymbol;
-        if (predictId) {
-            let url = 'http://localhost:8081/api/latest/graph/pattern-density/' + predictId;
+        let symbol = this.props.selectedSymbol;
+        let selectedLength = this.props.selectedLength;
+        if (symbol && selectedLength) {
+            let url = 'http://localhost:8081/api/latest/graph/pattern-density/' +
+                symbol + '?length=' + selectedLength;
             fetch(url).then(response => {
                 if (response.status >= 400) {
                     throw new Error("Bad response from server");
                 }
                 return response.json();
             }).then(data => {
-                this.setState(
-                    {
-                        selectedSymbol: data.symbol,
-                        selectedCompany: data.companyName,
-                        data: data.graphData
-                    })
+                this.setState({
+                    selectedSymbol: data.symbol,
+                    selectedCompany: data.companyName,
+                    selectedLength: selectedLength,
+                    data: data.graphData
+                });
             });
+        } else {
+            console.error("no symbol or length")
         }
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 
-        if (prevProps.selectedSymbol !== this.props.selectedSymbol) {
-            let predictId = this.props.selectedSymbol;
-            if (predictId) {
-                let url = 'http://localhost:8081/api/latest/graph/pattern-density/' + predictId;
+        if (prevProps.selectedSymbol !== this.props.selectedSymbol ||
+            prevProps.selectedLength !== this.props.selectedLength) {
+            let symbol = this.props.selectedSymbol;
+            let selectedLength = this.props.selectedLength;
+            if (symbol && selectedLength) {
+                let url = 'http://localhost:8081/api/latest/graph/pattern-density/' +
+                    symbol + '?length=' + selectedLength;
                 fetch(url).then(response => {
                     if (response.status >= 400) {
                         throw new Error("Bad response from server");
@@ -41,38 +48,50 @@ class StockPriceGraph extends Component {
                     return response.json();
                 }).then(data => {
                     this.setState({
+                        selectedSymbol: data.symbol,
+                        selectedCompany: data.companyName,
+                        selectedLength: selectedLength,
                         data: data.graphData
-                    })
+                    });
                 });
+            } else {
+                console.error("no symbol or length")
             }
         }
     }
 
     render() {
 
-        if (this.state == null) {
+        if (this.state === null) {
             console.debug("render - no state");
             return null;
         }
 
-        if (this.state.data == null) {
+        if (this.state.data === null) {
             console.debug("render - no data");
             return null;
         }
 
-        if (this.props.selectedSymbol == null) {
+        if (this.props.selectedSymbol === null) {
             console.debug("render - no symbol");
             return null;
         }
 
-        if (this.props.selectedCompany == null) {
+        if (this.props.selectedCompany === null) {
             console.debug("render - no company");
             return null;
         }
 
-        console.debug("render - " + this.props.selectedSymbol + " " + this.props.selectedCompany);
+        if (this.props.selectedLength === null) {
+            console.debug("render - no series length");
+            return null;
+        }
 
-        let title = "(" + this.props.selectedSymbol + ") " + this.props.selectedCompany + " Pattern Density";
+        console.debug("render - " + this.props.selectedSymbol + " " + this.props.selectedCompany +
+            " " + this.props.selectedLength);
+
+        let title = "(" + this.props.selectedSymbol + ") " + this.props.selectedCompany + " Pattern " +
+            this.props.selectedLength + " Period Density";
         let chartOptions = {
             title: {text: title},
             chart: {height: 300, type: 'column'},
@@ -96,10 +115,9 @@ class StockPriceGraph extends Component {
             <HighchartsReact
                 highcharts={Highcharts}
                 constructorType={'chart'}
-                options={chartOptions}
-            />
+                options={chartOptions}/>
         );
     }
 }
 
-export default StockPriceGraph
+export default GraphPatternDensity

@@ -43,9 +43,9 @@ func (c *GraphController) FindPeriodCloseSeries(symbol string) ([]interface{}, e
 	return series, nil
 }
 
-func (c *GraphController) FindPatternDensities(symbol string) (*graph.PatternDensity, error) {
+func (c *GraphController) FindPatternDensities(symbol string, length int) (*graph.PatternDensity, error) {
 
-	patterns, err := c.patternRepo.FindBySymbol(symbol)
+	patterns, err := c.patternRepo.FindBySymbolAndLength(symbol, length)
 	if err != nil {
 		return nil, err
 	}

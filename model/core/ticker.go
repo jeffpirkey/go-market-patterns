@@ -1,4 +1,4 @@
-package model
+package core
 
 type Ticker struct {
 	Symbol  string `json:"symbol"`

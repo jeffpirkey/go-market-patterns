@@ -2,14 +2,14 @@ package mal
 
 import (
 	log "github.com/sirupsen/logrus"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"sort"
 	"sync"
 	"time"
 )
 
 type MemPeriodRepo struct {
-	data  map[string]map[time.Time]*model.Period
+	data  map[string]map[time.Time]*core.Period
 	mutex *sync.Mutex
 }
 
@@ -18,11 +18,11 @@ func NewMemPeriodRepo() *MemPeriodRepo {
 }
 
 func (repo *MemPeriodRepo) Init() {
-	repo.data = make(map[string]map[time.Time]*model.Period)
+	repo.data = make(map[string]map[time.Time]*core.Period)
 	repo.mutex = &sync.Mutex{}
 }
 
-func (repo *MemPeriodRepo) InsertMany(data []*model.Period) (int, error) {
+func (repo *MemPeriodRepo) InsertMany(data []*core.Period) (int, error) {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
@@ -39,7 +39,7 @@ func (repo *MemPeriodRepo) InsertMany(data []*model.Period) (int, error) {
 			}
 		} else {
 			// Symbol not in map, so create it
-			repo.data[period.Symbol] = make(map[time.Time]*model.Period)
+			repo.data[period.Symbol] = make(map[time.Time]*core.Period)
 			repo.data[period.Symbol][period.Date] = period
 			count++
 		}
@@ -52,13 +52,13 @@ func (repo *MemPeriodRepo) DropAndCreate() error {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
-	repo.data = make(map[string]map[time.Time]*model.Period)
+	repo.data = make(map[string]map[time.Time]*core.Period)
 	return nil
 }
 
-func (repo *MemPeriodRepo) FindBySymbol(symbol string, sortDir SortDirection) (model.PeriodSlice, error) {
+func (repo *MemPeriodRepo) FindBySymbol(symbol string, sortDir SortDirection) (core.PeriodSlice, error) {
 
-	var tmp model.PeriodSlice
+	var tmp core.PeriodSlice
 	if symbolMap, found := repo.data[symbol]; found {
 		for _, period := range symbolMap {
 			tmp = append(tmp, period)

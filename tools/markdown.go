@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"go-market-patterns/mal"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"os"
 	"sort"
 	"strings"
@@ -17,7 +17,7 @@ const (
 
 func PrintMarkdownPatterns(repo *mal.Repos, symbol string, f *os.File) error {
 
-	var patterns model.PatternSlice
+	var patterns core.PatternSlice
 	patterns, err := repo.PatternRepo.FindBySymbol(symbol)
 	if err != nil {
 		return errors.Wrapf(err, "problem printing markdown for %v", symbol)

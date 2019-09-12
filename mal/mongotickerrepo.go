@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"go-market-patterns/model/report"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -27,7 +27,7 @@ func NewMongoTickerRepo(c *mongo.Collection) *MongoTickerRepo {
 }
 
 func (repo *MongoTickerRepo) Init() {
-	created, err := CreateCollection(repo.c, model.Ticker{})
+	created, err := CreateCollection(repo.c, core.Ticker{})
 	if err != nil {
 		log.WithError(err).Fatal("Unable to continue initializing MongoTickerRepo")
 	}
@@ -56,7 +56,7 @@ func (repo *MongoTickerRepo) CountAll() (int64, error) {
 //   Insert functions
 // *********************************************************
 
-func (repo *MongoTickerRepo) InsertOne(ticker *model.Ticker) error {
+func (repo *MongoTickerRepo) InsertOne(ticker *core.Ticker) error {
 
 	_, err := repo.c.InsertOne(context.TODO(), ticker)
 	if err != nil {
@@ -66,7 +66,7 @@ func (repo *MongoTickerRepo) InsertOne(ticker *model.Ticker) error {
 	return nil
 }
 
-func (repo *MongoTickerRepo) InsertMany(data []*model.Ticker) error {
+func (repo *MongoTickerRepo) InsertMany(data []*core.Ticker) error {
 
 	dataAry := make([]interface{}, len(data))
 	for i, v := range data {
@@ -93,10 +93,10 @@ func (repo *MongoTickerRepo) DropAndCreate() error {
 //   Find functions
 // *********************************************************
 
-func (repo *MongoTickerRepo) FindOne(symbol string) (*model.Ticker, error) {
+func (repo *MongoTickerRepo) FindOne(symbol string) (*core.Ticker, error) {
 
 	filter := bson.D{{"symbol", symbol}}
-	var ticker model.Ticker
+	var ticker core.Ticker
 	err := repo.c.FindOne(context.TODO(), filter).Decode(&ticker)
 	return &ticker, err
 }
@@ -104,16 +104,16 @@ func (repo *MongoTickerRepo) FindOne(symbol string) (*model.Ticker, error) {
 func (repo *MongoTickerRepo) FindOneCompanyNameBySymbol(symbol string) (string, error) {
 
 	filter := bson.D{{"symbol", symbol}}
-	var ticker model.Ticker
+	var ticker core.Ticker
 	err := repo.c.FindOne(context.TODO(), filter).Decode(&ticker)
 	return ticker.Company, err
 }
 
-func (repo *MongoTickerRepo) FindOneAndUpdateCompanyName(symbol, company string) *model.Ticker {
+func (repo *MongoTickerRepo) FindOneAndUpdateCompanyName(symbol, company string) *core.Ticker {
 	filter := bson.D{{"symbol", symbol}}
 	update := bson.D{{"$set", bson.D{{"company", company}}}}
 
-	var result model.Ticker
+	var result core.Ticker
 	err := repo.c.FindOneAndUpdate(context.TODO(), filter, update, UpdateOpt).Decode(&result)
 	if err != nil {
 		log.Warnf("unable to update company of ticker with symbol %v due to %v", symbol, err)
@@ -143,7 +143,7 @@ func (repo *MongoTickerRepo) FindSymbols() []string {
 	return symbols
 }
 
-func (repo *MongoTickerRepo) FindSymbolsAndCompany() *report.TickerSymbolCompanySlice {
+func (repo *MongoTickerRepo) FindSymbolCompanySliceSortAsc() *report.TickerSymbolCompanySlice {
 
 	var symbols report.TickerSymbolCompanySlice
 

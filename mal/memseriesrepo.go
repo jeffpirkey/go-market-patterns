@@ -2,13 +2,15 @@ package mal
 
 import (
 	"fmt"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
+	"go-market-patterns/model/report"
+	"sort"
 	"sync"
 )
 
 type MemSeriesRepo struct {
 	// map of series' symbol to a series pointer
-	data  map[string][]*model.Series
+	data  map[string][]*core.Series
 	mutex *sync.Mutex
 }
 
@@ -17,15 +19,39 @@ func NewMemSeriesRepo() *MemSeriesRepo {
 }
 
 func (repo *MemSeriesRepo) Init() {
-	repo.data = make(map[string][]*model.Series)
+	repo.data = make(map[string][]*core.Series)
 	repo.mutex = &sync.Mutex{}
 }
 
-func (repo *MemSeriesRepo) FindBySymbol(symbol string) ([]*model.Series, error) {
+func (repo *MemSeriesRepo) FindBySymbol(symbol string) ([]*core.Series, error) {
 	return repo.data[symbol], nil
 }
 
-func (repo *MemSeriesRepo) InsertOne(data *model.Series) error {
+func (repo *MemSeriesRepo) FindOneBySymbolAndLength(symbol string, length int) (*core.Series, error) {
+	for _, series := range repo.data[symbol] {
+		if series.Length == length {
+			return series, nil
+		}
+	}
+
+	return nil, fmt.Errorf("series not found for symbol '%v' and length '%v'", symbol, length)
+}
+
+func (repo *MemSeriesRepo) FindNameLengthSliceBySymbol(symbol string) *report.SeriesNameLengthSlice {
+
+	var findData report.SeriesNameLengthSlice
+	for _, series := range repo.data[symbol] {
+		seriesNameLength := report.SeriesNameLength{
+			Name:   series.Name,
+			Length: series.Length,
+		}
+		findData = append(findData, &seriesNameLength)
+	}
+	sort.Sort(findData)
+	return &findData
+}
+
+func (repo *MemSeriesRepo) InsertOne(data *core.Series) error {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
@@ -40,7 +66,7 @@ func (repo *MemSeriesRepo) InsertOne(data *model.Series) error {
 	return nil
 }
 
-func (repo *MemSeriesRepo) DeleteOne(data *model.Series) error {
+func (repo *MemSeriesRepo) DeleteOne(data *core.Series) error {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
@@ -80,6 +106,6 @@ func (repo *MemSeriesRepo) DropAndCreate() error {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
-	repo.data = make(map[string][]*model.Series)
+	repo.data = make(map[string][]*core.Series)
 	return nil
 }

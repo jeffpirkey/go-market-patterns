@@ -2,7 +2,7 @@ package mal
 
 import (
 	"fmt"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"go-market-patterns/model/report"
 	"sort"
 	"sync"
@@ -10,7 +10,7 @@ import (
 
 type MemTickerRepo struct {
 	// map of ticker's symbol to a ticker pointer
-	data  map[string]*model.Ticker
+	data  map[string]*core.Ticker
 	mutex *sync.Mutex
 }
 
@@ -19,7 +19,7 @@ func NewMemTickerRepo() *MemTickerRepo {
 }
 
 func (repo *MemTickerRepo) Init() {
-	repo.data = make(map[string]*model.Ticker)
+	repo.data = make(map[string]*core.Ticker)
 	repo.mutex = &sync.Mutex{}
 }
 
@@ -27,7 +27,7 @@ func (repo *MemTickerRepo) CountAll() (int64, error) {
 	return int64(len(repo.data)), nil
 }
 
-func (repo *MemTickerRepo) InsertOne(ticker *model.Ticker) error {
+func (repo *MemTickerRepo) InsertOne(ticker *core.Ticker) error {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
@@ -35,7 +35,7 @@ func (repo *MemTickerRepo) InsertOne(ticker *model.Ticker) error {
 	return nil
 }
 
-func (repo *MemTickerRepo) InsertMany(data []*model.Ticker) error {
+func (repo *MemTickerRepo) InsertMany(data []*core.Ticker) error {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
@@ -49,11 +49,11 @@ func (repo *MemTickerRepo) DropAndCreate() error {
 	repo.mutex.Lock()
 	defer repo.mutex.Unlock()
 
-	repo.data = make(map[string]*model.Ticker)
+	repo.data = make(map[string]*core.Ticker)
 	return nil
 }
 
-func (repo *MemTickerRepo) FindOne(symbol string) (*model.Ticker, error) {
+func (repo *MemTickerRepo) FindOne(symbol string) (*core.Ticker, error) {
 	return repo.data[symbol], nil
 }
 
@@ -76,7 +76,7 @@ func (repo *MemTickerRepo) FindSymbols() []string {
 	return symbols
 }
 
-func (repo *MemTickerRepo) FindSymbolsAndCompany() *report.TickerSymbolCompanySlice {
+func (repo *MemTickerRepo) FindSymbolCompanySliceSortAsc() *report.TickerSymbolCompanySlice {
 	slice := make(report.TickerSymbolCompanySlice, len(repo.data))
 	idx := 0
 	for _, ticker := range repo.data {

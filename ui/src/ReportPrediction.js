@@ -4,9 +4,10 @@ class ReportPrediction extends React.Component {
 
     componentDidMount() {
 
-        let predictId = this.props.selectedSymbol;
-        if (predictId) {
-            let url = 'http://localhost:8081/api/latest/predict/' + predictId;
+        let symbol = this.props.selectedSymbol;
+        let length = this.props.selectedLength;
+        if (symbol && length) {
+            let url = 'http://localhost:8081/api/latest/predict/' + symbol + "?length=" + length;
             fetch(url).then(response => {
                 if (response.status >= 400) {
                     throw new Error("Bad response from server");
@@ -15,15 +16,19 @@ class ReportPrediction extends React.Component {
             }).then(data => {
                 this.setState({prediction: data})
             });
+        } else {
+            console.error("no symbol or length")
         }
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 
-        if (prevProps.selectedSymbol !== this.props.selectedSymbol) {
-            let predictId = this.props.selectedSymbol;
-            if (predictId) {
-                let url = 'http://localhost:8081/api/latest/predict/' + predictId;
+        if (prevProps.selectedSymbol !== this.props.selectedSymbol ||
+            prevProps.selectedLength !== this.props.selectedLength) {
+            let symbol = this.props.selectedSymbol;
+            let length = this.props.selectedLength;
+            if (symbol && length) {
+                let url = 'http://localhost:8081/api/latest/predict/' + symbol + "?length=" + length;
                 fetch(url).then(response => {
                     if (response.status >= 400) {
                         throw new Error("Bad response from server");
@@ -32,18 +37,20 @@ class ReportPrediction extends React.Component {
                 }).then(data => {
                     this.setState({prediction: data})
                 });
+            } else {
+                console.error("no symbol or length")
             }
         }
     }
 
     render() {
 
-        if (this.state == null) {
+        if (this.state === null) {
             console.debug("render - no state");
             return null;
         }
 
-        if (this.state.prediction == null) {
+        if (this.state.prediction === null) {
             console.debug("render - no prediction");
             return null;
         }
@@ -57,7 +64,9 @@ class ReportPrediction extends React.Component {
             return (
                 <div className="container-columns-left">
                     <div className="font-title-small">Predictions</div>
-                    <div className="container-columns-left border font-default-text padding-sides">No Predictions Available</div>
+                    <div className="container-columns-left border font-default-text padding-sides">No Predictions
+                        Available
+                    </div>
                 </div>
             )
         }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"go-market-patterns/config"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"go-market-patterns/model/report"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -99,15 +99,27 @@ func (repos *Repos) Init(config *config.AppConfig) {
 func (repos *Repos) DropAll(t *testing.T) {
 
 	if t == nil {
-		log.Errorf("only able to delete databases when in test mode")
+		log.Error("only able to delete databases when in test mode")
 		return
 	}
 
 	if strings.HasPrefix(repos.config.Runtime.DbConnect, "memory") {
-		repos.PatternRepo.DropAndCreate()
-		repos.PeriodRepo.DropAndCreate()
-		repos.SeriesRepo.DropAndCreate()
-		repos.TickerRepo.DropAndCreate()
+		err := repos.PatternRepo.DropAndCreate()
+		if err != nil {
+			log.Errorf("problem dropping pattern repo: %v", err)
+		}
+		err = repos.PeriodRepo.DropAndCreate()
+		if err != nil {
+			log.Errorf("problem dropping pattern repo: %v", err)
+		}
+		err = repos.SeriesRepo.DropAndCreate()
+		if err != nil {
+			log.Errorf("problem dropping pattern repo: %v", err)
+		}
+		err = repos.TickerRepo.DropAndCreate()
+		if err != nil {
+			log.Errorf("problem dropping pattern repo: %v", err)
+		}
 	} else if strings.HasPrefix(repos.config.Runtime.DbConnect, "mongo") {
 		db := client.Database(repos.config.Runtime.DbConnect)
 		err := db.Drop(context.TODO())
@@ -145,43 +157,46 @@ func CreateCollection(c *mongo.Collection, doc interface{}) (bool, error) {
 
 type PatternRepo interface {
 	Init()
-	InsertMany(data []*model.Pattern) (int, error)
+	InsertMany(data []*core.Pattern) (int, error)
 	DeleteByLength(length int) error
 	DropAndCreate() error
-	FindBySymbol(symbol string) ([]*model.Pattern, error)
-	FindOneBySymbolAndValueAndLength(symbol, value string, length int) (*model.Pattern, error)
-	FindHighestUpProbability(density model.PatternDensity) (*model.Pattern, error)
-	FindHighestDownProbability(density model.PatternDensity) (*model.Pattern, error)
-	FindHighestNoChangeProbability(density model.PatternDensity) (*model.Pattern, error)
-	FindLowestUpProbability(density model.PatternDensity) (*model.Pattern, error)
-	FindLowestDownProbability(density model.PatternDensity) (*model.Pattern, error)
-	FindLowestNoChangeProbability(density model.PatternDensity) (*model.Pattern, error)
+	FindBySymbol(symbol string) ([]*core.Pattern, error)
+	FindBySymbolAndLength(symbol string, length int) ([]*core.Pattern, error)
+	FindOneBySymbolAndValueAndLength(symbol, value string, length int) (*core.Pattern, error)
+	FindHighestUpProbability(density core.PatternDensity) (*core.Pattern, error)
+	FindHighestDownProbability(density core.PatternDensity) (*core.Pattern, error)
+	FindHighestNoChangeProbability(density core.PatternDensity) (*core.Pattern, error)
+	FindLowestUpProbability(density core.PatternDensity) (*core.Pattern, error)
+	FindLowestDownProbability(density core.PatternDensity) (*core.Pattern, error)
+	FindLowestNoChangeProbability(density core.PatternDensity) (*core.Pattern, error)
 }
 
 type PeriodRepo interface {
 	Init()
-	InsertMany(data []*model.Period) (int, error)
+	InsertMany(data []*core.Period) (int, error)
 	DropAndCreate() error
-	FindBySymbol(symbol string, sort SortDirection) (model.PeriodSlice, error)
+	FindBySymbol(symbol string, sort SortDirection) (core.PeriodSlice, error)
 }
 
 type TickerRepo interface {
 	Init()
 	CountAll() (int64, error)
-	InsertOne(ticker *model.Ticker) error
-	InsertMany(data []*model.Ticker) error
+	InsertOne(ticker *core.Ticker) error
+	InsertMany(data []*core.Ticker) error
 	DropAndCreate() error
-	FindOne(symbol string) (*model.Ticker, error)
+	FindOne(symbol string) (*core.Ticker, error)
 	FindOneCompanyNameBySymbol(symbol string) (string, error)
 	FindSymbols() []string
-	FindSymbolsAndCompany() *report.TickerSymbolCompanySlice
+	FindSymbolCompanySliceSortAsc() *report.TickerSymbolCompanySlice
 }
 
 type SeriesRepo interface {
 	Init()
-	FindBySymbol(symbol string) ([]*model.Series, error)
-	InsertOne(data *model.Series) error
-	DeleteOne(data *model.Series) error
+	FindBySymbol(symbol string) ([]*core.Series, error)
+	FindOneBySymbolAndLength(symbol string, length int) (*core.Series, error)
+	FindNameLengthSliceBySymbol(symbol string) *report.SeriesNameLengthSlice
+	InsertOne(data *core.Series) error
+	DeleteOne(data *core.Series) error
 	DeleteByLength(length int) error
 	DropAndCreate() error
 }

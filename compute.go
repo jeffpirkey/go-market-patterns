@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"go-market-patterns/mal"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"strconv"
 	"sync"
 )
@@ -66,7 +66,7 @@ func recomputeAllSeries(computeLength int) error {
 	return trainErrors
 }
 
-func computeAllSeries(seriesLength int, dataMap map[*model.Ticker][]*model.Period) error {
+func computeAllSeries(seriesLength int, dataMap map[*core.Ticker][]*core.Period) error {
 
 	var trainErrors error
 
@@ -91,9 +91,9 @@ func computeAllSeries(seriesLength int, dataMap map[*model.Ticker][]*model.Perio
 	return trainErrors
 }
 
-func computeSeries(computeLength int, symbol string, periods []*model.Period) {
+func computeSeries(computeLength int, symbol string, periods []*core.Period) {
 
-	var patternMap = make(map[string]*model.Pattern)
+	var patternMap = make(map[string]*core.Pattern)
 	for i, period := range periods {
 
 		// Skip until we have enough back periods for the pattern sequencing
@@ -107,13 +107,13 @@ func computeSeries(computeLength int, symbol string, periods []*model.Period) {
 		for x := computeLength; x >= 1; x-- {
 			patName += fmt.Sprint(periods[i-x].DailyResult)
 		}
-		r := model.Calc(periods[i-1].Close, period.Close)
+		r := core.Calc(periods[i-1].Close, period.Close)
 
 		// Find the pattern and increment the total for the given result, r
-		var pattern *model.Pattern
+		var pattern *core.Pattern
 		pattern, found := patternMap[patName]
 		if !found {
-			pattern = &model.Pattern{Symbol: symbol, Value: patName, Length: computeLength}
+			pattern = &core.Pattern{Symbol: symbol, Value: patName, Length: computeLength}
 			patternMap[patName] = pattern
 		}
 
@@ -130,7 +130,7 @@ func computeSeries(computeLength int, symbol string, periods []*model.Period) {
 
 	if len(patternMap) > 0 {
 
-		var patterns []*model.Pattern
+		var patterns []*core.Pattern
 		for _, v := range patternMap {
 			patterns = append(patterns, v)
 		}
@@ -141,7 +141,7 @@ func computeSeries(computeLength int, symbol string, periods []*model.Period) {
 			log.WithError(err).Warnf("inserting patterns")
 		}
 
-		series := &model.Series{Symbol: symbol, Length: computeLength,
+		series := &core.Series{Symbol: symbol, Length: computeLength,
 			Name: strconv.Itoa(computeLength) + "-period-series"}
 		err = Repos.SeriesRepo.InsertOne(series)
 		if err != nil {

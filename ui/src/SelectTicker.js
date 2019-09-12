@@ -1,8 +1,8 @@
 import React from 'react';
 import SelectSeries from "./SelectSeries";
-import GraphStockPrice from "./GraphStockPrice";
-import GraphPatternDensity from "./GraphPatternDensity"
 import {BrowserView, isBrowser, MobileView} from "react-device-detect";
+import GraphStockPrice from "./GraphStockPrice";
+import EdgeProbabilities from "./EdgeProbabilities";
 
 class SelectTicker extends React.Component {
 
@@ -20,22 +20,20 @@ class SelectTicker extends React.Component {
                 }
                 return response.json();
             }).then(data => {
+            let firstSymbol = data.tickers[0].symbol;
+            let firstCompany = data.tickers[0].company;
             this.setState(
                 {
-                    selectedSymbol: data.names[0].symbol,
-                    selectedCompany: data.names[0].company,
-                    tickers: data.names
+                    selectedSymbol: firstSymbol,
+                    selectedCompany: firstCompany,
+                    tickers: data.tickers
                 }
             );
         });
     }
 
     handleChange(event) {
-        let tickers;
-        if (this.state != null && this.state.tickers != null) {
-            tickers = this.state.tickers;
-        }
-
+        let tickers = this.state.tickers;
         let companyName = tickers.filter(ticker => ticker.symbol === event.target.value)[0].company;
         this.setState(
             {
@@ -47,18 +45,17 @@ class SelectTicker extends React.Component {
     }
 
     render() {
-        if (this.state == null) {
+        if (this.state === null) {
             console.debug("render - no state");
             return null;
         }
 
-        if (this.state.selectedSymbol == null) {
+        if (this.state.selectedSymbol === null) {
             console.debug("render - no selected symbol");
             return null;
         }
 
-
-        if (this.state.tickers == null) {
+        if (this.state.tickers === null) {
             console.debug("render - no tickers");
             return null;
         }
@@ -66,32 +63,32 @@ class SelectTicker extends React.Component {
         console.debug("render - " + this.state.selectedSymbol);
 
         let tickers = this.state.tickers;
-        let optionItems = tickers.map((ticker) =>
+        let optionItems = tickers.map(ticker =>
             <option value={ticker.symbol}>{ticker.symbol} - {ticker.company}</option>
         );
 
-        let content = (<div className="container-columns-center margin-all">
-            <div className="container-rows-left">
-                <div className="container-columns-left margin-right">
-                    <div className="margin-bottom">
-                        <select onChange={this.handleChange}>
-                            {optionItems}
-                        </select>
+        let content = (
+            <div className="container-columns-center margin-all">
+                <div className="container-rows-left">
+                    <div className="container-columns-left margin-right">
+                        <div className="margin-bottom">
+                            <select onChange={this.handleChange}>
+                                {optionItems}
+                            </select>
+                        </div>
                     </div>
-                    <SelectSeries selectedSymbol={this.state.selectedSymbol}/>
-                </div>
-                <div className="container-columns-left wrap margin-left">
                     <div className="margin-bottom chart-height">
                         <GraphStockPrice selectedSymbol={this.state.selectedSymbol}
                                          selectedCompany={this.state.selectedCompany}/>
                     </div>
-                    <div className="margin-top chart-height">
-                        <GraphPatternDensity selectedSymbol={this.state.selectedSymbol}
-                                             selectedCompany={this.state.selectedCompany}/>
+                    <div className="margin-bottom margin-left">
+                        <EdgeProbabilities/>
                     </div>
                 </div>
+                <SelectSeries selectedSymbol={this.state.selectedSymbol}
+                              selectedCompany={this.state.selectedCompany}/>
             </div>
-        </div>);
+        );
 
         if (isBrowser) {
             return (

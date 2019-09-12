@@ -1,4 +1,4 @@
-package model
+package core
 
 // This defines any series that have been run
 type Series struct {

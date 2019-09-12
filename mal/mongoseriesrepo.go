@@ -5,11 +5,13 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
+	"go-market-patterns/model/report"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/bsonx"
+	"sort"
 )
 
 const (
@@ -24,9 +26,9 @@ func NewMongoSeriesRepo(c *mongo.Collection) *MongoSeriesRepo {
 	return &MongoSeriesRepo{c}
 }
 
-func (repo MongoSeriesRepo) Init() {
+func (repo *MongoSeriesRepo) Init() {
 
-	created, err := CreateCollection(repo.c, model.Series{})
+	created, err := CreateCollection(repo.c, core.Series{})
 	if err != nil {
 		log.WithError(err).Fatal("Unable to continue initializing MongoSeriesRepo")
 	}
@@ -52,9 +54,9 @@ func (repo MongoSeriesRepo) Init() {
 //   Find functions
 // *********************************************************
 
-func (repo MongoSeriesRepo) FindBySymbol(symbol string) ([]*model.Series, error) {
+func (repo *MongoSeriesRepo) FindBySymbol(symbol string) ([]*core.Series, error) {
 	filter := bson.D{{"symbol", symbol}}
-	var findData []*model.Series
+	var findData []*core.Series
 	cur, err := repo.c.Find(context.TODO(), filter)
 	if err != nil {
 		return findData, errors.Wrap(err, "unable to find by symbol")
@@ -63,7 +65,7 @@ func (repo MongoSeriesRepo) FindBySymbol(symbol string) ([]*model.Series, error)
 	var results error
 
 	for cur.Next(context.TODO()) {
-		var doc model.Series
+		var doc core.Series
 		err = cur.Decode(&doc)
 		if err != nil {
 			results = multierror.Append(results, err)
@@ -74,11 +76,51 @@ func (repo MongoSeriesRepo) FindBySymbol(symbol string) ([]*model.Series, error)
 	return findData, results
 }
 
+func (repo *MongoSeriesRepo) FindOneBySymbolAndLength(symbol string, length int) (*core.Series, error) {
+	filter := bson.D{{"symbol", symbol}, {"length", length}}
+	var findData *core.Series
+	result := repo.c.FindOne(context.TODO(), filter)
+	if result.Err() != nil {
+		return findData, errors.Wrap(result.Err(), "unable to find by symbol and length")
+	}
+
+	err := result.Decode(findData)
+	return findData, err
+}
+
+func (repo *MongoSeriesRepo) FindNameLengthSliceBySymbol(symbol string) *report.SeriesNameLengthSlice {
+	filter := bson.D{{"symbol", symbol}}
+	var findData report.SeriesNameLengthSlice
+	cur, err := repo.c.Find(context.TODO(), filter)
+	if err != nil {
+		log.Warnf("unable to load series names and lengths due to %v", err)
+		return &findData
+	}
+
+	var results error
+	for cur.Next(context.TODO()) {
+		var doc report.SeriesNameLength
+		err = cur.Decode(&doc)
+		if err != nil {
+			results = multierror.Append(results, err)
+			continue
+		}
+		findData = append(findData, &doc)
+	}
+	if results != nil {
+		log.Error(results)
+	}
+
+	sort.Sort(findData)
+
+	return &findData
+}
+
 // *********************************************************
 //   Insert functions
 // *********************************************************
 
-func (repo MongoSeriesRepo) InsertOne(data *model.Series) error {
+func (repo *MongoSeriesRepo) InsertOne(data *core.Series) error {
 
 	_, err := repo.c.InsertOne(context.TODO(), data)
 	if err != nil {
@@ -91,7 +133,7 @@ func (repo MongoSeriesRepo) InsertOne(data *model.Series) error {
 //   Delete functions
 // *********************************************************
 
-func (repo MongoSeriesRepo) DeleteOne(data *model.Series) error {
+func (repo *MongoSeriesRepo) DeleteOne(data *core.Series) error {
 
 	filter := bson.D{{"name", data.Name}}
 	_, err := repo.c.DeleteOne(context.TODO(), filter)
@@ -101,7 +143,7 @@ func (repo MongoSeriesRepo) DeleteOne(data *model.Series) error {
 	return nil
 }
 
-func (repo MongoSeriesRepo) DeleteByLength(length int) error {
+func (repo *MongoSeriesRepo) DeleteByLength(length int) error {
 
 	filter := bson.D{{"length", length}}
 	r, err := repo.c.DeleteMany(context.TODO(), filter)
@@ -113,7 +155,7 @@ func (repo MongoSeriesRepo) DeleteByLength(length int) error {
 	return nil
 }
 
-func (repo MongoSeriesRepo) DropAndCreate() error {
+func (repo *MongoSeriesRepo) DropAndCreate() error {
 	err := repo.c.Drop(context.TODO())
 	if err != nil {
 		return err

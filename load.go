@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rcrowley/go-metrics"
 	log "github.com/sirupsen/logrus"
-	"go-market-patterns/model"
+	"go-market-patterns/model/core"
 	"go-market-patterns/utils"
 	"golang.org/x/sync/semaphore"
 	"io"
@@ -297,7 +297,7 @@ func loadAndTrainData(symbol, companyName string, r *csv.Reader,
 		return errors.New(fmt.Sprintf("[%v] not enough periods", symbol))
 	}
 
-	var periods model.PeriodSlice
+	var periods core.PeriodSlice
 	for i, v := range vals {
 
 		var parseErrors error
@@ -328,7 +328,7 @@ func loadAndTrainData(symbol, companyName string, r *csv.Reader,
 		}
 
 		if parseErrors == nil {
-			p := model.Period{Symbol: symbol, Date: row.Date, Open: row.Open, High: row.High,
+			p := core.Period{Symbol: symbol, Date: row.Date, Open: row.Open, High: row.High,
 				Low: row.Low, Close: row.Close, Volume: row.Volume}
 			periods = append(periods, &p)
 		} else {
@@ -353,7 +353,7 @@ func loadAndTrainData(symbol, companyName string, r *csv.Reader,
 		return fmt.Errorf("[%v] periods parsed count does not match inserted count", symbol)
 	}
 
-	ticker := model.Ticker{Symbol: symbol, Company: companyName}
+	ticker := core.Ticker{Symbol: symbol, Company: companyName}
 	err = Repos.TickerRepo.InsertOne(&ticker)
 	if err != nil {
 		return errors.Wrapf(err, "[%v] inserting ticker", symbol)
