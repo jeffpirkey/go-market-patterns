@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "highcharts": "^7.1.2",
+    "highcharts": "^9.0.0",
     "highcharts-react-official": "^2.2.2",
     "immutability-helper": "^3.0.1",
     "mdbreact": "^4.18.0",
